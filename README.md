@@ -20,4 +20,5 @@ Workflow to get from FASTQ files to calling the HPV16 subtype by
 15. Find amino acid changes by variants in the subtypes in R
     - Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
     - VariantAnnotation library -> predictCoding
-16. (In progress...) Create html report of sequenced subtype'
+16. Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
+17. (In progress...) Create html report of sequenced subtype
