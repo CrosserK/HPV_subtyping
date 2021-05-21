@@ -1,4 +1,4 @@
-# HPV_subtyping
+# HPV_subtyping (In development)
 Workflow to get from FASTQ files to calling the HPV16 subtype by
 
 ### Workflow
