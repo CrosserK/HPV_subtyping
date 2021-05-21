@@ -34,7 +34,14 @@ Gene_anno <- makeTxDbFromGFF(gfffile) # Laver TxDb objekt fra gff3 eller gtf fil
 
 view(predictCoding(c_vcf, Gene_anno, seqSource = faf))
 
-?predictCoding
+vcf_anno <- predictCoding(c_vcf, Gene_anno, seqSource = faf)
+view(vcf_anno[,1])
+
+vcf_annodf <- vcf_anno[,1]
+view(vcf_annodf[1,1[1]])
+
+
+#?predictCoding
 
 
 
