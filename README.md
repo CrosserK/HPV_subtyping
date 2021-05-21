@@ -13,7 +13,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype by
 8. (not done yet) Call variants with GATK HaplotypeCaller
 9. (not done yet) Filter variants with GATK <...>
 10. Find number of mismatches in vcf files
-11. Find most likely subtype with sigma (sigma-build + sigma solve)
+11. Find most likely subtype with sigma (sigma-build + sigma solve) & compare with number of mismatches from vcf
 12. Find amino acid changes by variants in the subtypes in R
     - Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
     - VariantAnnotation library -> predictCoding
