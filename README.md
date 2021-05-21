@@ -1,5 +1,5 @@
 # HPV_subtyping
-This program is a workflow to get from FASTQ files to subtyping the HPV16 subtype by:
+This program is a workflow to get from FASTQ files to calling the HPV16 subtype by:
 
 ### Workflow
 
