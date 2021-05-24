@@ -1,5 +1,5 @@
 # HPV_subtyping (In development)
-Workflow to get from FASTQ files to calling the HPV16 subtype, given references of possible subtypes. The worfklow will also generate a report with nucleotide and amino acids changes. 
+Workflow to get from FASTQ files to calling the HPV16 subtype, given references of possible subtypes. The worfklow will also generate a report with nucleotide and amino acid changes. 
 
 ### Workflow
 
@@ -20,5 +20,5 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 15. Find amino acid changes by variants in the subtypes in R
     - Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
     - VariantAnnotation library -> predictCoding
-16. Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
+16. (In progress...) Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
 17. (In progress...) Create html report of sequenced subtype
