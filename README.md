@@ -3,7 +3,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 
 ### Workflow
 
-1. Trimming low qual bases from ends and reads <75 and >150 bp with cutadapt
+1. Trimming low qual bases from ends and reads <x and >y bp with cutadapt
 2. (optional) Quality checking with FastQC
 3. Indexing all given reference subtypes with sigma-index
 4. Aligning all fastq files with sigma-align (uses Bowtie2 for alignment)
