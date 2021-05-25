@@ -1,5 +1,5 @@
 
-# Call SNPs and create vcf file
+# Call SNPs and create vcf file 
 
 
 ##### EDIT #####

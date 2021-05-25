@@ -1,29 +1,27 @@
 
 # Predict amino acid changes from vcf, gff3 and fasta files
 
-library(tidyverse)
-if (!requireNamespace("BiocManager", quietly = TRUE)){
-  install.packages("BiocManager")
-}
-
+#install.packages("BiocManager")
 #BiocManager::install("VariantAnnotation")
 #BiocManager::install("GenomicFeatures", force = TRUE)
+#BiocManager::install("Repitools")
+library(tidyverse)
 library(VariantAnnotation)
 library(GenomicFeatures)
-
-installed.packages()[, c("Package", "LibPath")]
+library(Repitools)
 
 ##### EDIT ######
-Fastqname <- "Pt_44.IonXpress_090_run"
-Refname <- "K02718.1" # Uden extension
-vcfname <- "K02718.1.align.vcf"
-vcfout <- "K02718.1_anno.vcf" 
-gffname <- "K02718.1.gff3"
+Fastqname <- "Pt_43.IonXpress_089"
+Refname <- "AF402678.1" # Uden extension
+Runname <- "run_001"  
+vcfname <- paste(Refname,".align.vcf", sep ="")
+gffname <- paste(Refname,".gff3", sep ="")
+vcfout <- paste(Refname,"_anno.vcf", sep ="") 
 #################
 
 Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/", Refname, ".fasta", sep = "")
 faf <- open(FaFile(Ref))
-Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Sigma_run/", Fastqname, "/sigma_alignments_output/",Refname,"/", sep="")
+Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Sigma_run/", Runname, "/sigma_alignments_output/",Refname,"/", sep="")
 vcffile <- paste(Folder, vcfname, sep ="")
 gfffile <- paste(Folder, gffname, sep ="")
 c_vcf <- readVcf(vcffile) # læser som collapsed vcf
@@ -35,16 +33,13 @@ Gene_anno <- makeTxDbFromGFF(gfffile) # Laver TxDb objekt fra gff3 eller gtf fil
 view(predictCoding(c_vcf, Gene_anno, seqSource = faf))
 
 vcf_anno <- predictCoding(c_vcf, Gene_anno, seqSource = faf)
-view(vcf_anno[,1])
-
-vcf_annodf <- vcf_anno[,1]
-view(vcf_annodf[1,1[1]])
-
-
-#?predictCoding
 
 
 
+# Formaterer
+vcf_anno_df <- annoGR2DF(vcf_anno)
+AAchange <- select(vcf_anno_df, REFAA, PROTEIONLOC, VARAA) # "REFAA","PROTEIONLOC","VARAA"
+NucChange <- select(vcf_anno_df, CDSLOC.start, REF, ALT)
 
 
 
