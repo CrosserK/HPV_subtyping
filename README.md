@@ -10,7 +10,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 5. Sort bamfiles with samtools sort
 6. Mark duplicates with picard tools
 7. Index bam with samtools index
-8. (In progress...) Call variants with GATK HaplotypeCaller
+8. Call variants with GATK HaplotypeCaller
 9. (In progress...) Filter variants with GATK VariantRecalibrator in SNP mode + ApplyRecalibration
 10. (In progress...) Filter variants again but this time with GATK VariantRecalibrator in indel mode + ApplyRecalibration
 11. (In progress...) Remove filtered variants from vcf with GATK SelectVariants --excludeFiltered
