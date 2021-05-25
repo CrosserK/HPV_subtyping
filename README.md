@@ -13,7 +13,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 8. Call variants with GATK HaplotypeCaller
 9. Get vcf stats DP, QD, FS, MQ, SOR, MQRankSum, ReadPosRankSum with sed for R graphing (NOTE: the latter 2 are not grabbed correctly with sed)
 10. Hard filter variants with GATK VariantFiltration according to chosen filters (optionally use graphs)
-12. Remove filtered variants from vcf with GATK SelectVariants --excludeFiltered
+12. Remove filtered variants from vcf with GATK SelectVariants --exclude-filtered
 14. Find number of mismatches in vcf files
 15. Find most likely subtype with sigma (sigma-build + sigma solve) & compare with number of mismatches from vcf
 16. Find amino acid changes by variants in the subtypes in R
