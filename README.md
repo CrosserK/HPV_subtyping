@@ -11,7 +11,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 6. Mark duplicates with picard tools
 7. Index bam with samtools index
 8. Call variants with GATK HaplotypeCaller
-9. Get vcf stats DP, QD, FS, MQ, SOR, MQRankSum, ReadPosRankSum with sed (optionally output to R graph) (NOTE: the latter 2 are not grabbed correctly with sed)
+9. Get vcf stats DP, QD, FS, MQ, SOR, MQRankSum, ReadPosRankSum with sed for R graphing (NOTE: the latter 2 are not grabbed correctly with sed)
 10. Hard filter variants with GATK VariantFiltration according to chosen filters (optionally use graphs)
 12. Remove filtered variants from vcf with GATK SelectVariants --excludeFiltered
 14. Find number of mismatches in vcf files
