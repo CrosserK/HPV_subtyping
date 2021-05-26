@@ -3,21 +3,26 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 
 ### Workflow
 
-1. Trimming low qual bases from ends and reads \<x and \>y bp with cutadapt
-2. Quality checking with FastQC
-3. Indexing all given reference subtypes with sigma-index
-4. Aligning all fastq files with sigma-align (uses Bowtie2 for alignment)
-5. Sort bamfiles with samtools sort
-6. Mark duplicates with picard tools
-7. Index bam with samtools index
-8. Call variants with GATK HaplotypeCaller
-9. Get vcf stats DP, QD, FS, MQ, SOR, MQRankSum, ReadPosRankSum with sed for R graphing (NOTE: the latter 2 are not grabbed correctly with sed)
-10. Hard filter variants with GATK VariantFiltration according to chosen filters (optionally use graphs)
-12. Remove filtered variants from vcf with GATK SelectVariants --exclude-filtered
-14. Find number of mismatches in vcf files
-15. Find most likely subtype with sigma (sigma-build + sigma solve) & compare with number of mismatches from vcf
-16. Find amino acid changes by variants in the subtypes in R
-    - Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
-    - VariantAnnotation library -> predictCoding
-17. (In progress...) Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
-18. (In progress...) Create html report of sequenced subtype
+1. Put all fasta files in References top folder (subfolders are not scanned for references)
+2. Run fastqQC.sh input fastqfile
+   1. Trimming low qual bases from fastqfiles from ends and reads \<x and \>y bp with cutadapt
+   2. Quality checking with FastQC -> evaluate if step 1 needs to be redone with new parameters
+3. Run HPV_subtyper.sh, input fastqfilename and any runname
+   1. Indexing all given reference subtypes with sigma-index
+   2. Aligning all fastq files with sigma-align (uses Bowtie2 for alignment)
+   3. Sort bamfiles with samtools sort
+   4. Mark duplicates with picard tools
+   5. Index bam with samtools index
+   6. Call variants with GATK HaplotypeCaller
+   7. Get vcf stats DP, QD, FS, MQ, SOR, MQRankSum, ReadPosRankSum with sed for R graphing (NOTE: the latter 2 are not grabbed correctly with sed)
+4. Evaluate variant calls with Graph_vcf_stats.R
+5. Hard filter variants with vcf_filter.sh (GATK VariantFiltration) according to chosen filters
+6. Remove filtered variants from vcf with vcf_filt_ex.sh (GATK SelectVariants --exclude-filtered)
+7. Find number of mismatches in vcf files
+8. Find most likely subtype with sigma (sigma-build + sigma solve)
+9. Compare sigma results with number of mismatches from vcf
+10. Find amino acid changes with annotate_vcf.R
+    1. Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
+    2. VariantAnnotation library -> predictCoding
+    3. Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
+    4. (In progress...) Create html report of sequenced subtype
