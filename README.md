@@ -4,7 +4,7 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
 ### Workflow
 
 1. Put all fasta files in References top folder (subfolders are not scanned for references)
-2. Run fastqQC.sh input fastqfile
+2. Run fastqQC.sh, input fastqfile
    1. Trimming low qual bases from fastqfiles from ends and reads \<x and \>y bp with cutadapt
    2. Quality checking with FastQC -> evaluate if step 1 needs to be redone with new parameters
 3. Run HPV_subtyping.sh, input fastqfilename and any runname
