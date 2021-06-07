@@ -9,8 +9,8 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
    1. Trimming low qual bases from fastqfiles from ends and reads \<x and \>y bp with cutadapt
    2. Quality checking with FastQC -> evaluate if step 1 needs to be redone with new parameters
 4. Run HPV_subtyping.sh, input fastqfilename and any runname
-   1. Indexing all given reference subtypes with sigma-index
-   2. Aligning all fastq files with sigma-align (uses Bowtie2 for alignment)
+   1. Indexing all given reference subtypes with BWA index and samtools faidx
+   2. Aligning all fastq files with BWA-MEM
    3. Sort bamfiles with samtools sort
    4. Mark duplicates with picard tools
    5. Index bam with samtools index
