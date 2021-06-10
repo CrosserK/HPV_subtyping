@@ -11,6 +11,11 @@ MaxLen=120 # max længde reads i fastqfil skal være
 ####################################
 
 FastQF=$MainF/FASTQ
+SuperRunName=Run_len50_320
+MainF=/home/pato/Skrivebord/HPV16_projekt
+FastQF=$MainF/FASTQ
+####################################
+
 
 #Laver fastqnavne 
 find $FastQF/ -maxdepth 1  -name '*.fastq' | sed 's/^.*FASTQ.//' | sed 's/.fastq//' > $MainF/FASTQfiles_${SuperRunName}.txt
@@ -33,10 +38,7 @@ done
 
 
 
-
-
-
-################################################ Specific_site_cov ######################################################3
+############################################ Specific_site_cov.sh ##########################################################3
 
 
 # Script til at køre multiple fastq filer med Specific_site_cov.sh script
@@ -46,6 +48,7 @@ done
 ########## Define Folders ##########
 # FØR DENNE KØRES SKAL alle _filt fast filer fjernes
 SuperRunName=Exome_50_120
+SuperRunName=Run_len50_320
 MainF=/home/pato/Skrivebord/HPV16_projekt
 FastQF=$MainF/FASTQ
 ####################################

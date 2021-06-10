@@ -1,8 +1,5 @@
 
 
-
-
-
 # ClIP TEST
 
 
@@ -13,9 +10,10 @@ Ref_FASTA=/home/pato/Skrivebord/HPV16_projekt/References/K02718.1.fasta
 clipped_out=$MainF/clipped_soft.bam
 
 # Genome file til bedtools complement
-awk -v OFS='\t' {'print $1,$2'} ${Ref_FASTA}.fai > ${Ref_FASTA%.fasta}_genome.txt
 
-bedtools complement -i $bedfile -g ${Ref_FASTA%.fasta}_genome.txt > ${bedfile%.bed}_compl.bed
+#awk -v OFS='\t' {'print $1,$2'} ${Ref_FASTA}.fai > ${Ref_FASTA%.fasta}_genome.txt
+
+#bedtools complement -i $bedfile -g ${Ref_FASTA%.fasta}_genome.txt > ${bedfile%.bed}_compl.bed
 
 samtools ampliconclip --soft-clip --both-ends -b ${bedfile%.bed}_compl.bed $bam > $clipped_out
 samtools sort -n $clipped_out > ${clipped_out%.bam}.nsort.bam

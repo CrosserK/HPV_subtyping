@@ -16,13 +16,14 @@ SuperRunName=$3
 
 ###################### EDIT ##########################
 #Define Folders and params
+SuperRunName=Run_len50_320
 MainF=/home/pato/Skrivebord/HPV16_projekt
 FastQF=$MainF/FASTQ
-MainF=/home/pato/Skrivebord/HPV16_projekt
 SNPPOSBedFileName=FASTQfiles_${SuperRunName}_Nuc_change_coords_K02718.1.bed # Regions in bedfile will be soft clipped from bam
-SuperRunFolder=$SuperRunName
 #######################################################
 
+
+SuperRunFolder=$SuperRunName
 # Gå til MainF og opret mappe med samme navn som RunName, eks: 
 ###################### Generate folder structure ####################################
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
