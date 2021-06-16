@@ -6,29 +6,37 @@
 #BiocManager::install("VariantAnnotation")
 #BiocManager::install("GenomicFeatures", force = TRUE)
 #BiocManager::install("Repitools")
+library(GenomicFeatures)
 library(tidyverse)
 library(VariantAnnotation)
-library(GenomicFeatures)
 library(Repitools)
 library(dplyr)
 
-########## EDIT ##############
+ 
+# SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
+# Refname <- "HPV16REF_HR_K02718_revised"
+# GFFname <- "HPV16REF_HR_K02718_revised"
+# SuperRunName <- "Exome_50_320_ampliconcalls_PaVE_revised"
+# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+#### TEST 
+#GFFname <- "HPV16REF_HR_K02718_revised"
+#gffname <- paste(GFFname,"_fix2.gff3", sep ="")
+#gfffile <- paste(GFFFolder, gffname, sep ="")
+#Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
+######
+
+# Henter variabler fra commandline argumenter
 SaveDir <- as.character(commandArgs(TRUE)[1])
 Refname <- as.character(commandArgs(TRUE)[2])
 SuperRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
-##############################
 
 MultiFastqListFile <- paste("/home/pato/Skrivebord/HPV16_projekt/", MultiFQfile, ".txt", sep = "")
 MultiFastqList <- read.table(MultiFastqListFile)
 MultiFastqList <- as.list(MultiFastqList)
 MultiFastqList <- unlist(MultiFastqList) # Unlister for at for loop kan læse korrekt
 
-
-vcfname <- paste(Refname,"_filtered.filtEx_headerfix.vcf", sep ="") # _filtered.filtEx_headerfix
-gffname <- paste(Refname,"_E1fix.gff3", sep ="")
-vcfout <- paste(Refname,"_anno.vcf", sep ="") 
-
+gffname <- paste(Refname,".gff3", sep ="")
 
 cbind.fill <- function(...){
   nm <- list(...) 
@@ -39,7 +47,7 @@ cbind.fill <- function(...){
 }
 GFFFolder <- paste("/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles/", sep="")
 gfffile <- paste(GFFFolder, gffname, sep ="")
-Gene_anno <- makeTxDbFromGFF(gfffile) # Laver TxDb objekt fra gff3 eller gtf fil. # , circ_seqs = "K02718.1"
+Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
 # LIG MÆRKE TIL ADVARSELSBESKEDER
 newdf <- data.frame()
 newdf_nuc <- data.frame()
@@ -50,15 +58,17 @@ noelement <- 0
 novcfcounter <- 0
 for(i in MultiFastqList){
   ###TEST
-  #i <- "Pt_79_RNA.IonXpress_073"
+  #i <- "Pt_33_RNA.IonXpress_087"
   #####
   
+  vcfname <- paste(i, "_", Refname,".vcf", sep ="") # _filtered.filtEx_headerfix
+
   Fastqname <- i
   Runname <- paste(i,"_run",sep="")
   
   Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/", Refname, ".fasta", sep = "")
   faf <- open(FaFile(Ref))
-  Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/ResultFiles", sep="")
+  Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/ResultFiles/", sep="")
   counter <- counter + 1
   # Error check for om der er en filtreret vcf fil tilgængelig
   vcffile <- paste(Folder, vcfname, sep ="")
@@ -136,57 +146,6 @@ df <- as.vector(as.matrix(NucChangePos))
 # df <- unique(df) # Finder alle unikke værdier
 df <- data.frame(Reference = Refname, Pos = NucChangePos-1, PosEnd = NucChangePos)
 write.table(df, file = paste(SaveDir,MultiFQfile,"_Nuc_change_coords_", Refname, ".bed", sep = ""), row.names = F,col.names = F, quote = F, sep = "\t")
-
-
-
-
-
-# Kør nu Sitecoverage.sh
-
-
-
-
-
-##### Henter og tilsætter NO CALLS ######
-FreqDF <- separate(Fredf, col = 2, sep = "-", into = c("Nuc", "-"))
-counter <- 0 
-nocalldf <- data.frame()
-FreqDF <- cbind(FreqDF, No_Calls = 0)
-FreqDF$No_Calls <- as.integer(FreqDF$No_Calls)
-for(i in MultiFastqList){
-  
-  Fastqname <- i
-  Runname <- paste(i,"_run",sep="")
-  Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/ResultFiles", sep="")
-  SNP_cov_File <- read.table(paste(Folder,"SNP_cov.txt", sep =""))
-  
-  for(j in 1:nrow(FreqDF)){
-    for(n in 1:nrow(SNP_cov_File)){
-      if((FreqDF[j,1] == SNP_cov_File[n,2]) & (SNP_cov_File[n,3] < 5) ){
-        FreqDF[j,6] <- FreqDF[j,6] + 1
-      }
-    }
-  }
-  
-  counter <- counter + 1
-
-  # Convenience progress tracker
-  print(paste(i,"is done...",counter,"of",lengthofList, sep = " "))
-  if(counter == lengthofList){
-    print("Job's done!")
-
-  }
-}
-
-# Printer annotation
-  
-Anno_freq <- FreqDF 
-Anno_freq[,1] <- as.data.frame(paste("c.",Anno_freq$NucPos, Anno_freq$Nuc, sep = ""))
-Anno_freq <- Anno_freq[,-2]
-colnames(Anno_freq) <- c("Base", "AA", "GENEID", "Freq", "No_call")
-# Laver annotation info filer:
 write.table(newdf, file = paste(SaveDir,MultiFQfile,"_Annotation_", Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
-write.table(Anno_freq, file = paste(SaveDir,MultiFQfile,"_AnnotationFrequency_", Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F)
-
-
+write.table(Fredf, file = paste(SaveDir,"ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 

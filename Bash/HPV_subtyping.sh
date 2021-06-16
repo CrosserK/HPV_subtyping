@@ -14,12 +14,21 @@ SuperRunFolder=$3
 cutadaptMinsize=$4
 cutadaptMaxsize=$5
 
+
 ###################### EDIT ##########################
 #Define Folders and params
 MainF=/home/pato/Skrivebord/HPV16_projekt
-BedFileName=IAD209923_226_Designed_compl.bed # Regions in bedfile will be soft clipped from bam
+BedFileName=Revised_IAD209923_226_Designed_compl.bed # Regions in bedfile will be soft clipped from bam
 QualTrim=20
+BedFilePool=$MainF/References/BedFiles/Revised_IAD209923_226_Designed_poolx.bed
 #######################################################
+
+#RunName=Intersect_test3
+#FastQFile=Pt_33_RNA.IonXpress_087 #input uden extenstion
+#SuperRunFolder=Pt_33_RNA.IonXpress_087_run
+#cutadaptMinsize=50
+#cutadaptMaxsize=320
+
 
 # Gå til MainF og opret mappe med samme navn som RunName, eks: 
 ###################### Generate folder structure ####################################
@@ -90,29 +99,20 @@ MMcountFile_filt=$ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt # Filtere
 # For hver bamfil alignet til unik reference, fortag nu:
 for refType in $RefList; do 
 
-	# Laver mappe til hver alignment
+	# Laver mappe til hver alignment og aligner og markerer duplicater og indexerer
 	mkdir -p $workD/$refType
 	currentF=$workD/$refType
+	mkdir -p $currentF/ResultFiles
 	Ref_FASTA=$RefF/${refType}/${refType}.fasta # Find reference for picard
 	BamFile=$currentF/${refType}.bam
 	# Aligner
 	bwa mem -t 12 -v 2 $Ref_FASTA $SeqF/${FastQFile}_filt.fastq > ${BamFile%bam}sam # -v = verbosity, 2 for errors og warnings kun
 
-	# Fjerner filtreret fastq 
+	# Fjerner filtreret fastq, da den ikke skal bruges længere
 	rm $SeqF/${FastQFile}_filt.fastq
 
 	# Sort bamfile
 	samtools sort ${BamFile%bam}sam -o ${BamFile%bam}sort.bam 
-
-	# Lft align
-	#gatk LeftAlignIndels \
-   #-R $Ref_FASTA \
-   #-I ${BamFile%bam}sort.bam \
-   #-O ${BamFile%bam}sort.leftAl.bam
-
-   	#mv ${BamFile%bam}sort.bam ${BamFile%bam}sort.noLeftAl.bam
-   	#samtools index ${BamFile%bam}sort.noLeftAl.bam
-   	#mv ${BamFile%bam}sort.leftAl.bam ${BamFile%bam}sort.bam
 
 	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I ${BamFile%bam}sort.bam -O ${BamFile%bam}sort.dup.bam \
 	-M $currentF/${refType}_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_${refType}.txt
@@ -120,47 +120,69 @@ for refType in $RefList; do
 	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I ${BamFile%bam}sort.bam -O ${BamFile%bam}sort.dup_rm.bam \
 	-M $currentF/${refType}_DupMetrics.txt -REMOVE_DUPLICATES true 2> $ErrorF/markdup_errors_${refType}.txt
 
-    # Rename & index nodupmarked file
-    samtools index ${BamFile%bam}sort.bam 
-    samtools index ${BamFile%bam}sort.dup.bam
-    samtools index ${BamFile%bam}sort.dup_rm.bam
+	# Rename & index nodupmarked file
+	samtools index ${BamFile%bam}sort.bam 
+	samtools index ${BamFile%bam}sort.dup.bam
+	samtools index ${BamFile%bam}sort.dup_rm.bam
 
-    # HaplotypeCaller nødvendigheder
+	BamFile=${BamFile%bam}sort.dup.bam
+
+	# Splitter nu bamfil i de 2 amplicon pools:
+
+for i in 1 2; do
+
+	# Choose file 
+	tmpBedFile=${BedFilePool%x.bed}${i}.bed
+
+	bedtools intersect -a $BamFile -b $tmpBedFile > ${BamFile%.bam}_intersect${i}.bam
+	BamInt=${BamFile%.bam}_intersect${i}.bam
+
+	clipped_out=$BamInt
+
+	# HaplotypeCaller nødvendigheder
 	# Tilføjer tags, nødvendig for GATK, da der ikke arbejdes med uBAM filer 
+	# RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
 	java -jar picard.jar AddOrReplaceReadGroups \
-	I=${BamFile%bam}sort.dup.bam \
-	O=${BamFile%bam}sort.dup.readGroupFix.bam \
+	I=$clipped_out \
+	O=${clipped_out%.bam}.readGroupFix.bam \
 	RGLB=lib1 \
 	RGPL=IonTorrent \
 	RGPU=unit1 \
 	RGSM=1
-	# RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
-	# Index bam
-    samtools index ${BamFile%bam}sort.dup.readGroupFix.bam
-	# Intersecting bam with bed (removing everything not in bed)
-	# bedtools intersect -a ${BamFile%bam}sort.dup.readGroupFix.bam -b $BedFile > ${BamFile%bam}sort.dup.readGroupFix.isec.bam
 
-	# samtools index ${BamFile%bam}sort.dup.readGroupFix.isec.bam
-	samtools index ${BamFile%bam}sort.dup.readGroupFix.bam
-	VarFile=$currentF/${refType}.vcf # Define vcf name
+	BamOut=${clipped_out%.bam}.readGroupFix.bam
 
-	# Clipping to bed file and fixing insert size and MD tags accordingly
-	samtools ampliconclip --soft-clip --both-ends -b $BedFile ${BamFile%bam}sort.dup.readGroupFix.bam > ${BamFile%bam}sort.dup.readGroupFix.clipped.bam
-	samtools sort -n ${BamFile%bam}sort.dup.readGroupFix.clipped.bam > ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.bam
-	samtools fixmate -O bam ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.bam ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.sizefix.bam
-	samtools calmd ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.sizefix.bam $Ref_FASTA --output-fmt BAM > ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.sizefix.MD.bam
-	samtools sort ${BamFile%bam}sort.dup.readGroupFix.clipped.nsort.sizefix.MD.bam > ${BamFile%bam}sort.dup.readGroupFix.clipped.sort.sizefix.MD.bam
-	samtools index ${BamFile%bam}sort.dup.readGroupFix.clipped.sort.sizefix.MD.bam
-	
+	samtools index $BamOut
+
+	VarFile=${BamOut%.bam}.vcf 
 
 	gatk --java-options "-Xmx4g" HaplotypeCaller  \
 	--sample-ploidy 1 \
 	   -R $Ref_FASTA \
-	   -I ${BamFile%bam}sort.dup.readGroupFix.clipped.sort.sizefix.MD.bam\
+	   -I $BamOut \
 	   -O $VarFile 
 
-	#freebayes -p 1 -f $Ref_FASTA ${BamFile%bam}sort.dup.readGroupFix.isec.bam > ${VarFile%vcf}freeb.vcf # -C for at bestemme hvor mange reads skal support en variant. -p for ploidy. Freebayes inkluderer leftalignment
-	#mv ${VarFile%vcf}freeb.vcf $VarFile
+	# Filtrerer for bedfil positioner
+	gatk --java-options "-Xmx4g" SelectVariants  \
+	   -R $Ref_FASTA \
+	   -V $VarFile \
+	   -L $tmpBedFile \
+	   -O ${VarFile%.vcf}_IntFilt.vcf 
+
+done 
+
+	# MERGER ikke Bam filer fra hver pool, da der så vil opstå duplikater, fordi begge splits kan indeholde nogle af de samme reads
+	
+	# MERGER vcf filer fra hver pool:
+   	java -jar picard.jar MergeVcfs \
+   	-I ${BamFile%.bam}_intersect1.readGroupFix_IntFilt.vcf \
+   	-I ${BamFile%.bam}_intersect2.readGroupFix_IntFilt.vcf \
+   	-O ${BamFile%.bam}_merged.vcf
+
+	bcftools view ${BamFile%.bam}_merged.vcf | awk '/^#/{print}; !/^#/{if (!uniq[$2]++) print}' > ${BamFile%.bam}_merged_fix.vcf
+
+	VarFile=${BamFile%.bam}_merged_fix.vcf
+
 	# Indsætter mismatch count i samlet fil over alle alignments
 	echo $refType $(grep -v '^#' $VarFile | wc -l) >> $MMcountFile
 
@@ -197,7 +219,7 @@ for refType in $RefList; do
 	cut -f 8 | \
 	sed 's/^.*;ReadPosRankSum=\([0-9]*.[0-9]*\);.*$/\1/'  > $vcfstatF/ReadPosRankSum.txt
 
-	# Hard filtering variants. Note that FS is not important for non-poliploid organisms
+	# Hard filtering variants
 	gatk --java-options "-Xmx4g" VariantFiltration \
    -R $Ref_FASTA \
    -V $VarFile \
@@ -256,11 +278,13 @@ for refType in $RefList; do
 
 	sed '/^##source=HaplotypeCaller/d' $VarFile > ${VarFile%.vcf}_headerfix.vcf
 
-	# Omdøber slutfil til mere læsbart navn
-	cp ${BamFile%bam}sort.dup.readGroupFix.clipped.sort.sizefix.MD.bam $ćurrentF/${FastQFile}.bam 
-	samtools index $ćurrentF/${FastQFile}.bam
-	cp ${VarFile%.vcf}_headerfix.vcf $currentF/${FastQFile}.vcf
-	cp ${VarFile%.vcf}_headerfix.vcf.idx $currentF/${FastQFile}.vcf.idx
+	# Omdøber slutfil til mere læsbart navn og ligger i slutmappe
+	mv $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam 
+	mv $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai 
+	mv ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf
+	mv ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx
+
+
 
 done
 
@@ -269,8 +293,6 @@ mv ${MMcountFile}.sort $MMcountFile # Renaming mismatch file
 
 sort -k2 -n $MMcountFile_filt > ${MMcountFile}_filt.sort # Sorting for least mismatches
 mv ${MMcountFile}_filt.sort $MMcountFile_filt # Renaming mismatch file
-
-
 
 # Rydder op
 # Sikrer at RefF er korrekt angivet, så der ikke slettes for meget
@@ -281,3 +303,8 @@ if [ ${#RunName} -gt 0 ]; then
 	rm -r $RefF
 fi
 #rm $RefdF/RefSubtyper_${RunName}.txt
+
+
+
+
+

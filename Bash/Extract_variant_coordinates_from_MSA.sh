@@ -26,7 +26,6 @@ snp-sites -v -o $MainF/$Output $MainF/$Input
 
 # Get sublineage lengths, kopier den for "main strain" ind i R script for korrektion i header
 # Dette skal gøres på unaligned file, da sekvensen ellers kan være forlænget med "-" pga gaps i alignment
-<<<<<<< HEAD
 Input1=${Input%mafft}fasta
 awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen}' $MainF/$Input1
 
