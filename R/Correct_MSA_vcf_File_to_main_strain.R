@@ -9,11 +9,11 @@ library(sjmisc)
 
 
 # Indsæt filer over ### og kør alt!
-MainF="/home/pato/Skrivebord/HPV16_projekt/References_andre/"
-MSA_afa_navn <- "16substrain_HPV16_sublineages.mafft"
-vcfnavn <- "16substrain_HPV16_sublineages_relativeToK02718.1.vcf" # Inkl extenstion
-ChromosomeName <- "K02718.1" # Her kan navn ændres så filen kan læses i IGV. Det skal være tilsvarende referencen der loades i IGV
-ID_header <- "##contig=<ID=1,length=7904>" # Her korrigeres til main strains længde
+MainF="/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types/"
+MSA_afa_navn <- "HPV16_16Sub_rev.mafft"
+vcfnavn <- "HPV16_16Sub_relativeToK02718.1_revised.vcf" # Inkl extenstion
+ChromosomeName <- "K02718.1_revised" # Her kan navn ændres så filen kan læses i IGV. Det skal være tilsvarende referencen der loades i IGV
+ID_header <- "##contig=<ID=1,length=7906>" # Her korrigeres til main strains længde
 #################################
 
 MSA_afa <- paste(MainF,MSA_afa_navn,sep="") # MSA = Multiple sequence alignment
@@ -41,10 +41,11 @@ for(j in gap_pos){
     #print(pos)
     if(pos >= highestpos){
       fromidx <- min(which(tmp_vcf_data[,1] >= highestpos))
+      tmp_vcf_data[fromidx:endidx,1] <- tmp_vcf_data[fromidx:endidx,1] - 1 # Trækker alle positioner efter gap sammen ved at minus dem med 1
+      # Hopper ud af loop for denne gap pos og går til næste gap pos
       break()
     }
   }
-  tmp_vcf_data[fromidx:endidx,1] <- tmp_vcf_data[fromidx:endidx,1] - 1
 }
 #####
 

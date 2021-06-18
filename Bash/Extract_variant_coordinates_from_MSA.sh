@@ -9,18 +9,12 @@ set -o pipefail
 # Lav multiple sequence alignment med Clustal Omega Online tool eller MAFFT og output som fasta
 # Sikrer at "main" strain er øverst i input (combined.fa)! SNP-sites benytter øverste til at kigge på resten af SNPs med
 # Husk at kopiere sublineage length ind i R script for header korrektion. Længder kommer nede i awk
-MainF=/home/pato/Skrivebord/HPV16_projekt/References_andre
+MainF=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
 # Kombinerer alle fasta i folder
 
-Input=16substrain_HPV16_sublineages.mafft
-Output=16substrain_HPV16_sublineages_relativeToK02718.1.vcf
+Input=HPV16_16Sub_rev.mafft
+Output=HPV16_16Sub_relativeToK02718.1_revised.vcf
 ####################
-
-
-# Sammensætte fasta'er til Clustal Omega
-#cd $MainF/References
-#cat *.fasta > $MainF/combined.fasta
-#cd
 
 snp-sites -v -o $MainF/$Output $MainF/$Input
 

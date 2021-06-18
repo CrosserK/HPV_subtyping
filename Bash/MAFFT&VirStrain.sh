@@ -5,11 +5,15 @@ mafft-linsi 'in.fasta' > 'out.afa'
 
 conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
 cd VirStrain
-FQin=/home/pato/Skrivebord/HPV16_projekt/FASTQ/Pt_11_DNA.IonXpress_085.fastq
-VirStrain_customdb=/home/pato/Skrivebord/HPV16_projekt/References/HPV16_16_virstrain
-Resultsout=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/test_16substrain
+MainF=/home/pato/Skrivebord/HPV16_projekt
+VirStrain_customdb=$MainF/References/HPV16_16_virstrain_revised
+MAFFTIn=$MainF/References/HPV16_16subtypes_revised.mafft
 
-python VirStrain_build.py -i '/home/pato/Skrivebord/HPV16_projekt/References_andre/16substrain_HPV16_sublineages.mafft' -d '/home/pato/Skrivebord/HPV16_projekt/References/HPV16_16_virstrain' -s 1
-python VirStrain.py  -m -i $FQin -d $VirStrain_customdb -o $Resultsout 
+python VirStrain_build.py -i $MAFFTIn -d $VirStrain_customdb -s 1
+
+
+#FQin=/home/pato/Skrivebord/HPV16_projekt/FASTQ/Pt_11_DNA.IonXpress_085.fastq
+#Resultsout=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/test_16substrain
+#python VirStrain.py -i $FQin -d $VirStrain_customdb -o $Resultsout 
 
 conda deactivate

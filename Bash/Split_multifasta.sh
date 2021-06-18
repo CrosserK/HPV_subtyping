@@ -1,14 +1,21 @@
 
 #Target folders:
 MainF='/home/pato/Skrivebord/HPV16_projekt'
-RefFolder=$MainF/References/HPV_revised_PaVE/HPV_HG19_V4
+RefFolder=$MainF/References/GFFfiles/All_550
 
 cd $RefFolder
-cat HPV_HG19_V4_1.fasta | awk '{
-        if (substr($0, 1, 1)==">") {filename=(substr($0,2) ".fasta")}
-        print $0 > filename
+cat multi.fasta | awk '{
+    if (substr($0, 1, 17)==">") {filename=(substr($1,1) ".fasta")}
+    print $0 > filename
 }'
 
+
+# Split multi gff3 fil
+MultiGFF=All_550_HPV_norevised.gff3
+grep "sequence-region" $MultiGFF | awk '{print $2}' > identifiers
+for i in `cat ./identifiers`; do 
+	grep -e $i -e Species -A1 $MultiGFF > $i.gff3
+done
 
 # Rename to remove anything after space
 for f in *.fasta; do
@@ -48,4 +55,9 @@ do
     	awk '/^>/ {print($0)}; /^[^>]/ {print(toupper($0))}' $i > ${i%.fasta}.uppercase.fasta	
     	echo "Making uppercase to $i"
     fi
+done
+
+# Rename all files ex:
+for i in pt._*.fastq; do
+	mv $i test/$(echo pt_${i#pt._})
 done
