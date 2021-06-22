@@ -26,4 +26,4 @@ Workflow to get from FASTQ files to calling the HPV16 subtype, given references 
     1. Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
     2. VariantAnnotation library -> predictCoding
     3. Format output to e.g. p.V600E, with codon number and c.1983A>T with nucleotide number
-    4. (In progress...) Create html report of sequenced subtype
+    4. Create html report of sequenced subtype
