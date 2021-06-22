@@ -12,12 +12,12 @@ library(VariantAnnotation)
 library(Repitools)
 library(dplyr)
 
- 
-# SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
-# Refname <- "HPV16REF_HR_K02718_revised"
-# GFFname <- "HPV16REF_HR_K02718_revised"
-# SuperRunName <- "Exome_50_320_ampliconcalls_PaVE_revised"
-# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+MainF <- "/home/pato/Skrivebord/HPV16_projekt/"
+SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
+Refname <- "K02718.1_revised"
+GFFname <- "K02718.1_revised"
+SuperRunName <- "Exome_50_320_ampliconcalls_PaVE_revised"
+MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 #### TEST 
 #GFFname <- "HPV16REF_HR_K02718_revised"
 #gffname <- paste(GFFname,"_fix2.gff3", sep ="")
@@ -26,12 +26,13 @@ library(dplyr)
 ######
 
 # Henter variabler fra commandline argumenter
-SaveDir <- as.character(commandArgs(TRUE)[1])
-Refname <- as.character(commandArgs(TRUE)[2])
-SuperRunName <- as.character(commandArgs(TRUE)[3])
-MultiFQfile <- as.character(commandArgs(TRUE)[4])
+MainF <- as.character(commandArgs(TRUE)[1])
+SaveDir <- as.character(commandArgs(TRUE)[2])
+Refname <- as.character(commandArgs(TRUE)[3])
+SuperRunName <- as.character(commandArgs(TRUE)[4])
+MultiFQfile <- as.character(commandArgs(TRUE)[5])
 
-MultiFastqListFile <- paste("/home/pato/Skrivebord/HPV16_projekt/", MultiFQfile, ".txt", sep = "")
+MultiFastqListFile <- paste(MainF, MultiFQfile, ".txt", sep = "")
 MultiFastqList <- read.table(MultiFastqListFile)
 MultiFastqList <- as.list(MultiFastqList)
 MultiFastqList <- unlist(MultiFastqList) # Unlister for at for loop kan læse korrekt
@@ -58,7 +59,7 @@ noelement <- 0
 novcfcounter <- 0
 for(i in MultiFastqList){
   ###TEST
-  #i <- "Pt_33_RNA.IonXpress_087"
+  i <- "Pt_152.IonXpress_002"
   #####
   
   vcfname <- paste(i, "_", Refname,".vcf", sep ="") # _filtered.filtEx_headerfix
@@ -66,7 +67,7 @@ for(i in MultiFastqList){
   Fastqname <- i
   Runname <- paste(i,"_run",sep="")
   
-  Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/", Refname, ".fasta", sep = "")
+  Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
   faf <- open(FaFile(Ref))
   Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/ResultFiles/", sep="")
   counter <- counter + 1
@@ -148,4 +149,9 @@ df <- data.frame(Reference = Refname, Pos = NucChangePos-1, PosEnd = NucChangePo
 write.table(df, file = paste(SaveDir,MultiFQfile,"_Nuc_change_coords_", Refname, ".bed", sep = ""), row.names = F,col.names = F, quote = F, sep = "\t")
 write.table(newdf, file = paste(SaveDir,MultiFQfile,"_Annotation_", Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 write.table(Fredf, file = paste(SaveDir,"ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+
+# Laver udvidet tabel med kaldt reftype
+ExtTable <- as.data.frame(cbind(Refname, newdf))
+
+
 

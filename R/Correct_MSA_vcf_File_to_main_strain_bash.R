@@ -16,11 +16,11 @@ ChromosomeName <- as.character(commandArgs(TRUE)[4]) # Her kan navn ændres så 
 ID_header <- "##contig=<ID=1,length=na>" # Her korrigeres til main strains længde
 #################################
 
-MainF <- "/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types"
-MSA_afa_navn <- "HPV97.mafft"
-vcfnavn <- "HPV97.vcf" # Inkl extenstion
-ChromosomeName <- "DQ080080.1" # Her kan navn ændres så filen kan læses i IGV. Det skal være tilsvarende referencen der loades i IGV
-ID_header <- "##contig=<ID=1,length=na>"
+# MainF <- "/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types"
+# MSA_afa_navn <- "HPV16.mafft"
+# vcfnavn <- "HPV16.vcf" # Inkl extenstion
+# ChromosomeName <- "HPV16_K02718_1_revised" # Her kan navn ændres så filen kan læses i IGV. Det skal være tilsvarende referencen der loades i IGV
+# ID_header <- "##contig=<ID=1,length=na>"
 
 MainFvcf <- paste(MainF, "/SNPs/",sep="")
 MainFmafft <- paste(MainF, "/MSA/",sep="")
@@ -36,8 +36,9 @@ vcf_header[2] <- ID_header # Ændrer ifht. hvor mange gap_pos der er
 vcf_header <- vcf_header[1:4]
 vcf_data <- read.table(MSA_vcf, stringsAsFactors = FALSE)
 if(l[[1]][1] > 0){ # Håndterer cases hvor der ingen gaps er
+  
   gap_pos <- data.frame(matrix(unlist(l), nrow=length(l), byrow=TRUE))
-  ####TES
+  ####TEST
   #gap_pos[4] <- 3952
   #gap_pos viser nu eksakte koordinater på "-"'er
   # read two times the vcf file, first for the columns names, second for the data
@@ -83,7 +84,7 @@ if(l[[1]][1] > 0){ # Håndterer cases hvor der ingen gaps er
   #str(vcf_data)
   #view(vcf_header[1:4])
   
-  vcf_data[1] <- gsub("\\..*","",paste(substr(vcfnavn, 1, nchar(vcfnavn)-4),"_",ChromosomeName, sep="")) # Korrigerer CHROM navn, så IGV kan læse den. Korrigerer navn.
+  vcf_data[1] <- ChromosomeName # Korrigerer CHROM navn, så IGV kan læse den. Korrigerer navn.
   write.table(vcf_header, file = paste(MainF,"/SNPs_corr/","corr_",vcfnavn,sep=""), sep = "\t", col.names = F, row.names = F, append = F, quote = F)
   write.table(vcf_data, file = paste(MainF,"/SNPs_corr/","corr_",vcfnavn,sep=""), sep = "\t", col.names = F, row.names = F, append = T, quote = F)
   
@@ -92,7 +93,7 @@ if(l[[1]][1] > 0){ # Håndterer cases hvor der ingen gaps er
   # så de kommer på samme linje
   
 } else { # Skriver eksakt kopi ud, hvis der ingen gaps var i multiple seq alignment
-  vcf_data[1] <- gsub("\\..*","",paste(substr(vcfnavn, 1, nchar(vcfnavn)-4),"_",ChromosomeName, sep=""))
+  vcf_data[1] <- ChromosomeName
   write.table(vcf_header, file = paste(MainF,"/SNPs_corr/","corr_",vcfnavn,sep=""), sep = "\t", col.names = F, row.names = F, append = F, quote = F)
   write.table(vcf_data, file = paste(MainF,"/SNPs_corr/","corr_",vcfnavn,sep=""), sep = "\t", col.names = F, row.names = F, append = T, quote = F)
 }

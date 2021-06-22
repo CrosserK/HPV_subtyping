@@ -41,7 +41,7 @@ for refType in $RefList; do
 	SNPPOSBedFile=$MainF/Annotation_results/$SNPPOSBedFileName
 	
 	currentF=$workD/$refType/ResultFiles
-	Ref_FASTA=$RefF/${refType}/${refType}.fasta # Find reference for picard
+	Ref_FASTA=$RefF/IndexedRef/${refType}/${refType}.fasta # Find reference for picard
 	BamFile=$currentF/${FastQFile}_${refType}.sort.bam
 
 	samtools depth -a $BamFile -b $SNPPOSBedFile > $currentF/SNP_cov.txt

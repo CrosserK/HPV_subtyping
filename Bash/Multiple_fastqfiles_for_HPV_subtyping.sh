@@ -4,23 +4,24 @@
 # Kun ændre i "Define folders" sektion og kør 
 
 ########## Define Folders ##########
-SuperRunName=KaroTest_rev3  #Exome_50_320_ampliconcalls_PaVE_revised
+SuperRunName=Exome_50_320_ampliconcalls_PaVE_revised  #Exome_50_320_ampliconcalls_PaVE_revised
 MainF=/home/pato/Skrivebord/HPV16_projekt
 VirStraindb=HPV16_16_virstrain_revised
 QualTrim=20 # Qualtrim til cutadapt
 MinLen=50 # Min længde reads i fastqfil skal være
 MaxLen=320 # max længde reads i fastqfil skal være
 AmpliconRef=K02718.1
-BedFileNameX=Revised_IAD209923_226_Designed_compl # Den bed fil som amplicons er lavet ud fra i vådlab del. Bruges til at cutte primer sekvenser væk
+BedFileNameX=IAD209923_226_Designed_compl # Den bed fil som amplicons er lavet ud fra i vådlab del. Bruges til at cutte primer sekvenser væk
 ####################################
 
+indexReferences=false
 cutOutsideAmplicons=false # Risk of loosing data if HPV is other type than the one used in ampliconpanel
 RunAnnoRSCript=true
-RunSiteCovSCript=true
-RunNoCallsSCript=true
+RunSiteCovScript=true
+RunNoCallsScript=true
 
 # Gå til MainF og opret mappe med samme navn som RunName, eks: 
-mkdir -p $MainF/{Aligned/{Samfiles,BamFiles/unsorted},References,Results/$SuperRunFolder/$RunName,ReferenceDetails,FASTQ,Analysis/{Qual,Depth,Flagstats,DuplicateMetrics,Errors}} # -p option enables returning no error if folders exist. They will not be overwritten either way. 
+mkdir -p $MainF/{Aligned/{Samfiles,BamFiles/unsorted},References/IndexedRef,Results/$SuperRunFolder/$RunName,ReferenceDetails,FASTQ,Analysis/{Qual,Depth,Flagstats,DuplicateMetrics,Errors}} # -p option enables returning no error if folders exist. They will not be overwritten either way. 
 
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
 DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; ResultsF=$MainF/Results/$SuperRunFolder
@@ -51,6 +52,7 @@ fi
 
 
 ############################# SUBTYPING ###############################
+# Finder ligenu top 3 most possible strains
 conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
 
 START=1
@@ -72,11 +74,13 @@ conda deactivate
 # Putter hver reference i en undermappe for sig, så de er klar til kørsel
 # genererer også dict fil og samtools faidx fil til HaplotypeCaller
 # Genererer index til bwa mem
+if [ $indexReferences = true ]; then
+
 for f in $RefF/*.fasta; do
-	mkdir -p ${f%.fasta}
 	RefName=${f##*/}
-	cp $f IndexedRef/${f%.fasta}/$RefName
-	Ref_FASTA=IndexedRef/${f%.fasta}/$RefName
+	mkdir -p $RefF/IndexedRef/${RefName%.fasta}
+	cp $f $RefF/IndexedRef/${RefName%.fasta}/$RefName
+	Ref_FASTA=$RefF/IndexedRef/${RefName%.fasta}/$RefName
 
 	# Create sequence dictionary for gatk haplotypecaller
 	java -jar picard.jar CreateSequenceDictionary \
@@ -89,6 +93,8 @@ for f in $RefF/*.fasta; do
 	# Index with samtools faidx
 	samtools faidx $Ref_FASTA
 done
+
+fi
 ########################################################################
 
 
@@ -111,58 +117,33 @@ done
 # Ovenstående returnerer RevRefCalls variabel, som er den korrekte fundne subtyper
 
 # Følgende scripts læser hvilke FASTQfiler der skal behandles fra FASTQfiles_[navn].txt og FASTQfiles_[navn]_run.txt filerne
-
 Rscriptfolder=$MainF/Scripts/R
 MultiFQFile=$(echo FASTQfiles_$SuperRunName)
-
-# Finder navne for hver ref i References overmappe (eksl. undermapper)
-#find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
-#sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_${SuperRunName}.txt
-#RefListFile=$RefdF/RefSubtyper_${SuperRunName}.txt
-RefList=$RevRefCalls # Henter variabel fra alignement/variantcalling script    # $(< $RefListFile)
 SuperRunFolder=$SuperRunName
 
 
 if [ $RunAnnoRSCript = true ]; then
-	START=1
-	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
-	for (( linenumber=$START; linenumber<=$END; linenumber++ )); 
-	do
-	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
-	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+
+	# Dette script tager selv fat i nødvendige Fastfiler fra MultiFQFile
 	VirSupOut=$MainF/VirStrain_run/$SuperRunName
 	RunName=${FastqInput}_run
 	VirRunOut_run=$VirSupOut/$RunName
-	RevRefCalls=$(< $VirRunOut_run/Revised_SubTypeCalls.txt) 
-	for refType in $RevRefCalls; do
-	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash.R $MainF/Annotation_results/ $refType $SuperRunName $MultiFQFile
-	done
-	done
+	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash.R $MainF $MainF/Annotation_results/ $SuperRunName $MultiFQFile
+
 fi
 
 # Dette script skal bruge liste over alle referencer der køres
 
-if [ $RunSiteCovSCript = true ]; then
+if [ $RunSiteCovScript = true ]; then
 
-	# Kører mega run
-	START=1
-	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
-	for (( linenumber=$START; linenumber<=$END; linenumber++ ));
-	do
-	
-	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
-	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
 	Specific_site_cov.sh $FastqRunInput $FastqInput $SuperRunFolder $RefListFile
-	echo $linenumber of $END
-	
-	done
 
 fi
 
 
 # Kører R No_calls script 
 
-if [ $RunNoCallsSCript = true ]; then
+if [ $RunNoCallsScript = true ]; then
 
 	for refType in $RefList; do
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF/Annotation_results/ $refType $SuperRunName $MultiFQFile 

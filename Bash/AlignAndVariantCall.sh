@@ -20,13 +20,13 @@ AmpliconRef=$7
 
 
 
-#RunName=pt_11.IonXpress_040_run
-#FastQFile=pt_11.IonXpress_040 #input uden extenstion
-#SuperRunFolder=KaroTest_rev2
+#RunName=Pt_152.IonXpress_002_run
+#FastQFile=Pt_152.IonXpress_002 #input uden extenstion
+#SuperRunFolder=Exome_50_320_ampliconcalls_PaVE_revised
 #MainF=/home/pato/Skrivebord/HPV16_projekt
-#Called_subtype=HQ644236.1
-#VirRunOut_run=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/KaroTest/pt_40.IonXpress_065_run
-#BedFileNameX=Revised_IAD209923_226_Designed_compl
+#Called_subtype=K02718.1_revised
+#VirRunOut_run=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/Exome_50_320_ampliconcalls_PaVE_revised/Pt_153.IonXpress_003_run
+#BedFileNameX=AD209923_226_Designed_compl
 #AmpliconRef=K02718.1
 
 
@@ -67,38 +67,35 @@ RefListOrigin=$(< $RefdF/RefSubtyper_${RunName}.txt) # Finder navn på alle refe
 # RefListCalls=K02718.1_revised
 RefListCalls=$(< $VirRunOut_run/SubtypeCall.txt)
 
-echo Har kald: $RefListCalls slut
+echo Har kald: $RefListCalls
 
 # Clearer RefList for referencer som ikke er i RefList mappe (eks fordi der ikke kunne kaldes op til 3 mulige typer og der derfor er blevet trukket forkert string ud)
+rm $VirRunOut_run/Revised_SubTypeCalls.txt # Sletter for at sikre at der ikke appendes til fil fra tidligere test kørsel
 touch $VirRunOut_run/Revised_SubTypeCalls.txt
 RevRefs=$VirRunOut_run/Revised_SubTypeCalls.txt
 
 
 ############## Clear unviable subtype calls #################
-for refType in $RefListOrigin; do
-
 for refCall in $RefListCalls; do
 
-if [ $refType == $refCall ]; then
-
-Check=$(grep "$refCall" $VirRunOut_run/SubtypeCall.txt)
-
-if [ ${#Check} -gt 0 ]; then
-	
+	for refType in $RefListOrigin; do
+	if [ $refType == $refCall ]; then
+	Check=$(grep "$refCall" $VirRunOut_run/SubtypeCall.txt)
+	if [ ${#Check} -gt 0 ]; then
 	echo $refCall >> $RevRefs
-fi
+	fi
+	fi
+	done
 
-fi
-done
 done
 # unset Called_subtype
 ##############################################################
 
 # Tager nu revideret subtype fil:
 RefList=$(< $RevRefs)
-export RevRefCalls=$(< $RevRefs) # Giver revideret refs til main script
+#export RevRefCalls=$(< $RevRefs) # Giver revideret refs til main script
 #### TEST ####
-#echo Til $FastQFile bruger fil $RefdF/RefSubtyper_${RunName}.txt og har revideret til "$RefList"
+echo Til $FastQFile bruger fil $RefdF/RefSubtyper_${RunName}.txt og har revideret til "$RefList"
 
 ######################################################################################
 
@@ -121,6 +118,8 @@ mkdir -p $ResultsF/$RunName
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 
 ################## BAM CLEANUP & VARIANT DISCOVERY #################
+rm $ResultsF/$RunName/MismatchCounts_${RunName}.txt
+rm $ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt
 touch $ResultsF/$RunName/MismatchCounts_${RunName}.txt
 touch $ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt
 MMcountFile=$ResultsF/$RunName/MismatchCounts_${RunName}.txt
@@ -129,13 +128,13 @@ MMcountFile_filt=$ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt # Filtere
 for refType in $RefList; do 
 
 	####TEST
-	#refType=AF536179.1
+	refType=K02718.1_revised
 	# Laver mappe til hver alignment og aligner og markerer duplicater og indexerer
 	mkdir -p $workD/$refType
 	currentF=$workD/$refType
 	mkdir -p $currentF/ResultFiles
-	Ref_FASTA=$RefF/${refType}/${refType}.fasta # Find reference for picard
-	echo reference er nu $Ref_FASTA
+	Ref_FASTA=$RefF/IndexedRef/${refType}/${refType}.fasta # Find reference for picard
+	echo Reference er nu ${Ref_FASTA##*/}
 	BamFile=$currentF/${refType}.bam
 	# Aligner
 	bwa mem -t 12 -v 2 $Ref_FASTA $SeqF/${FastQFile}_filt.fastq > ${BamFile%bam}sam # -v = verbosity, 2 for errors og warnings kun
@@ -156,12 +155,15 @@ for refType in $RefList; do
 
 	BamFile=${BamFile%bam}sort.dup.bam
 
+
 	# Splitter nu bamfil i de 2 amplicon pools, hvis reference er ampliconref:
-	if [ $refType == $AmpliconRef ] || [ $refType == ${AmpliconRef}_revised ]; then
+	if [ $refType == $AmpliconRef ]; then # || [ $refType == ${AmpliconRef}_revised ]
 		for i in 1 2; do
 
+			echo Splitter i 2 pools
+
 			# Choose file 
-			tmpBedFile=${BedFilePool%x.bed}${i}.bed
+			tmpBedFile=${BedFilePool%x.bed}_pool${i}.bed
 
 			bedtools intersect -a $BamFile -b $tmpBedFile > ${BamFile%.bam}_intersect${i}.bam
 			BamInt=${BamFile%.bam}_intersect${i}.bam
@@ -213,9 +215,7 @@ for refType in $RefList; do
 		VarFile=${BamFile%.bam}_merged_fix.vcf
 	
 	else # Hvis ref ikke er ampliconref, køres der normal variant calling
-
-		#### TEST
-		echo splitter ikke i 2 pools
+		
 
 		# HaplotypeCaller nødvendigheder
 		# Tilføjer tags, nødvendig for GATK, da der ikke arbejdes med uBAM filer 
@@ -354,7 +354,7 @@ for refType in $RefList; do
 
 done
 
-unset RefList
+#unset RefList
 
 sort -k2 -n $MMcountFile > ${MMcountFile}.sort # Sorting for least mismatches
 mv ${MMcountFile}.sort $MMcountFile # Renaming mismatch file
@@ -366,7 +366,7 @@ mv ${MMcountFile}_filt.sort $MMcountFile_filt # Renaming mismatch file
 # Sikrer at RefF er korrekt angivet, så der ikke slettes for meget
 # (i tilfælde af at den er blevet slettet længere oppe, eller RunName variabel er tom)
 # -gt står for greater than
-RefF=$MainF/References/$RunName 
+#RefF=$MainF/References/$RunName 
 #if [ ${#RunName} -gt 0 ]; then
 #	rm -r $RefF
 #fi
