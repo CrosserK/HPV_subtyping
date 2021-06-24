@@ -14,3 +14,7 @@ sed 's/.t00//g'
 # Fjern _ for at R script ikke kommer til at separere forkert:
 sed 's/_ALPHA/-ALPHA/g'
 
+# Sæt CDS phases til 0 (Tjek om de er 0 i genbank fil), byg videre på:
+# grep "CDS" $file | awk "CDS" {print $8} 
+
+

@@ -10,12 +10,14 @@ set -o pipefail
 RunName=$1
 FastQFile=$2 #input uden extenstion
 SuperRunName=$3
-RefListFile=$4
 
-#RunName=Pt_143_DNA.IonXpress_001_run
-#FastQFile=Pt_143_DNA.IonXpress_001 #input uden extenstion
-#SuperRunName=Exome_50_320_ampliconcalls_PaVE_revised
-#RefListFile=/home/pato/Skrivebord/HPV16_projekt/ReferenceDetails/RefSubtyper_Exome_50_320_ampliconcalls_PaVE_revised.txt
+#RunName=pt_40.IonXpress_065_run
+#FastQFile=pt_40.IonXpress_065 #input uden extenstion
+#SuperRunName=Karoline_run_test2
+
+
+RefListFile=/home/pato/Skrivebord/HPV16_projekt/ReferenceDetails/RefSubtyper_latest.txt
+
 
 #Define Folders and params
 MainF=/home/pato/Skrivebord/HPV16_projekt
@@ -34,7 +36,7 @@ RefList=$(< $RefListFile)
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 
 for refType in $RefList; do
-
+	if [ -d $ResultsF/$RunName/$refType ]; then
 	###################### EDIT ##########################
 	SNPPOSBedFileName=$(echo FASTQfiles_${SuperRunName}_Nuc_change_coords_${refType}.bed) # Regioner der skal tjekkes
 	#######################################################
@@ -45,5 +47,5 @@ for refType in $RefList; do
 	BamFile=$currentF/${FastQFile}_${refType}.sort.bam
 
 	samtools depth -a $BamFile -b $SNPPOSBedFile > $currentF/SNP_cov.txt
-
+	fi
 done

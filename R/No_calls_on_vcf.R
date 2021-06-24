@@ -1,4 +1,4 @@
-
+#!/usr/bin/env Rscript
 
 # Køres efter Sitecoverage.sh for at lave no calls
 
@@ -10,11 +10,11 @@ Refname <- as.character(commandArgs(TRUE)[2])
 SuperRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
 
-SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
-Refname <- "K02718.1_PaVE"
-GFFname <- "K02718.1_revised"
-SuperRunName <- "Exome_50_120_ampliconcalls_PaVE_revised"
-MultiFQfile <- "FASTQfiles_Exome_50_120_ampliconcalls_PaVE"
+#SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
+#Refname <- "K02718.1_PaVE"
+#GFFname <- "K02718.1_revised"
+#SuperRunName <- "Exome_50_120_ampliconcalls_PaVE_revised"
+#MultiFQfile <- "FASTQfiles_Exome_50_120_ampliconcalls_PaVE"
 
 Fredf <- read.table(paste(SaveDir,"ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""), header = T)
 

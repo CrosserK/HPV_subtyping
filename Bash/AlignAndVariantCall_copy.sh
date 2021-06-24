@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 set -u
-#set -o pipefail
+set -o pipefail
 
 # Alle referencer der ligger i $MainF/RefF overmappe (eksl. undermapper) bliver brugt
 # Åben script på denne måde:
@@ -19,14 +19,15 @@ AmpliconRef=$7
 # HVIS EN SPECIFIK REFERENCE, CTRL+F: "HER DEFINERES REFERENCER"
 customRef=true
 
-# TEST
-#RunName=pt_7.IonXpress_038_run
-#FastQFile=pt_7.IonXpress_038 #input uden extenstion
-#SuperRunFolder=Karoline_run_test
-#MainF=/home/pato/Skrivebord/HPV16_projekt
-#VirRunOut_run=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/"{SuperRunFolder}"/"${RunName}"
-#BedFileNameX=IAD209923_226_Designed_compl
-#AmpliconRef=K02718.1
+
+RunName=pt_8.IonXpress_039_run
+FastQFile=pt_8.IonXpress_039 #input uden extenstion
+SuperRunFolder=Karoline_run_test
+MainF=/home/pato/Skrivebord/HPV16_projekt
+VirRunOut_run=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/Exome_50_320_ampliconcalls_PaVE_revised/Pt_153.IonXpress_003_run
+BedFileNameX=AD209923_226_Designed_compl
+AmpliconRef=K02718.1
+
 
 #######TEST#####
 #echo $RunName $FastQFile $SuperRunFolder $MainF $VirRunOut_run $BedFileNameX
@@ -38,7 +39,7 @@ customRef=true
 ###################### EDIT ##########################
 #Define Folders and params
 BedFileName=$BedFileNameX # Regions in bedfile will be soft clipped from bam
-BedFilePool=$MainF/References/BedFiles/"${BedFileNameX}"x.bed
+BedFilePool=$MainF/References/BedFiles/${BedFileNameX}x.bed
 #######################################################
 
 MainF=/home/pato/Skrivebord/HPV16_projekt
@@ -49,6 +50,7 @@ VirRunOut_run=$VirSupOut/$RunName
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
 DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; ResultsF=$MainF/Results/$SuperRunFolder
 
+# Fetching Bed file
 ###################### Create directory for each reference ##########################
 # Finder navne for hver ref i References overmappe (eksl. undermapper)
 find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
@@ -90,22 +92,22 @@ fi
 # Tager nu revideret subtype fil:
 RefList=$(< $RevRefs)
 
-echo Til $FastQFile bruger fil $RefdF/RefSubtyper_"${RunName}".txt og har revideret til "$RefList"
+echo Til $FastQFile bruger fil $RefdF/RefSubtyper_${RunName}.txt og har revideret til "$RefList"
 
 ######################################################################################
 
 ############### FASTQ preprocessing and filtering (DATA CLEANUP) ##################### 
 # Se read længder og antal reads med awk
-#cat $SeqF/"${FastQFile}".fastq | awk '{if(NR%4==2) print length($1)}' | sort -n | uniq -c  # Read lenghts, 1. kolonne er antal reads, 2. kolonne er længde
-# echo $(cat $SeqF/"${FastQFile}".fastq | wc -l)/4 | bc # Number of reads
+#cat $SeqF/${FastQFile}.fastq | awk '{if(NR%4==2) print length($1)}' | sort -n | uniq -c  # Read lenghts, 1. kolonne er antal reads, 2. kolonne er længde
+# echo $(cat $SeqF/${FastQFile}.fastq | wc -l)/4 | bc # Number of reads
 ######################################################################################
 
 ####################### FASTQ QC & Filter #############################
 # # -O Require MINLENGTH overlap between read and adapter for an adapter to be found. Default: 3
-#fastqc -o $QualF $SeqF/"${FastQFile}".fastq 
-# cutadapt -q $QualTrim -m $cutadaptMinsize -M $cutadaptMaxsize $SeqF/"${FastQFile}".fastq -o $SeqF/"${FastQFile}"_filt.fastq
-#fastqc -o $QualF $SeqF/"${FastQFile}"_filt.fastq 
-# firefox $QualF $SeqF/"${FastQFile}"_filt_fastqc.html &
+#fastqc -o $QualF $SeqF/${FastQFile}.fastq 
+# cutadapt -q $QualTrim -m $cutadaptMinsize -M $cutadaptMaxsize $SeqF/${FastQFile}.fastq -o $SeqF/${FastQFile}_filt.fastq
+#fastqc -o $QualF $SeqF/${FastQFile}_filt.fastq 
+# firefox $QualF $SeqF/${FastQFile}_filt_fastqc.html &
 ##################### DEFINING RUNFOLDER ######################
 
 mkdir -p $ResultsF
@@ -113,12 +115,12 @@ mkdir -p $ResultsF/$RunName
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 
 ################## BAM CLEANUP & VARIANT DISCOVERY #################
-rm -f $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
-rm -f $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
-touch $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
-touch $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
-MMcountFile=$ResultsF/$RunName/MismatchCounts_"${RunName}".txt
-MMcountFile_filt=$ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt # Filtered MM count file
+rm -f $ResultsF/$RunName/MismatchCounts_${RunName}.txt
+rm -f $ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt
+touch $ResultsF/$RunName/MismatchCounts_${RunName}.txt
+touch $ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt
+MMcountFile=$ResultsF/$RunName/MismatchCounts_${RunName}.txt
+MMcountFile_filt=$ResultsF/$RunName/MismatchCounts_filt_${RunName}.txt # Filtered MM count file
 
 for refType in $RefList; do 
 
@@ -128,40 +130,40 @@ for refType in $RefList; do
 	mkdir -p $workD/"$refType"
 	currentF=$workD/"$refType"
 	mkdir -p "$currentF"/ResultFiles
-	Ref_FASTA=$RefF/IndexedRef/"${refType}"/"${refType}".fasta # Find reference for picard
+	Ref_FASTA=$RefF/IndexedRef/${refType}/${refType}.fasta # Find reference for picard
 	echo Reference er nu "${Ref_FASTA##*/}"
-	BamFile=$currentF/"${refType}".bam
+	BamFile=$currentF/${refType}.bam
 	# Aligner
-	bwa mem -t 12 -v 2 "$Ref_FASTA" $SeqF/"${FastQFile}"_filt.fastq > "${BamFile%bam}"sam # -v = verbosity, 2 for errors og warnings kun
+	bwa mem -t 12 -v 2 "$Ref_FASTA" $SeqF/${FastQFile}_filt.fastq > ${BamFile%bam}sam # -v = verbosity, 2 for errors og warnings kun
 
 	# Sort bamfile
-	samtools sort "${BamFile%bam}"sam -o "${BamFile%bam}"sort.bam 
+	samtools sort ${BamFile%bam}sam -o "${BamFile%bam}"sort.bam 
 
-	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup.bam \
-	-M $currentF/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_"${refType}".txt
+	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O ${BamFile%bam}sort.dup.bam \
+	-M $currentF/${refType}_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_${refType}.txt
 
-	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup_rm.bam \
-	-M "$currentF"/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $ErrorF/markdup_errors_"${refType}".txt
+	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O ${BamFile%bam}sort.dup_rm.bam \
+	-M "$currentF"/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $ErrorF/markdup_errors_${refType}.txt
 
 	# Rename & index nodupmarked file
-	samtools index "${BamFile%bam}"sort.bam 
-	samtools index "${BamFile%bam}"sort.dup.bam
-	samtools index "${BamFile%bam}"sort.dup_rm.bam
+	samtools index ${BamFile%bam}sort.bam 
+	samtools index ${BamFile%bam}sort.dup.bam
+	samtools index ${BamFile%bam}sort.dup_rm.bam
 
-	BamFile="${BamFile%bam}"sort.dup.bam
+	BamFile=${BamFile%bam}sort.dup.bam
 
 
 	# Splitter nu bamfil i de 2 amplicon pools, hvis reference er ampliconref:
-	if [ "$refType" == "$AmpliconRef" ]; then # || [ $refType == "${AmpliconRef}"_revised ]
+	if [ $refType == $AmpliconRef ]; then # || [ $refType == ${AmpliconRef}_revised ]
 	for i in 1 2; do
 
 	echo Splitter i 2 pools
 
 	# Choose file 
-	tmpBedFile="${BedFilePool%x.bed}"_pool${i}.bed
+	tmpBedFile=${BedFilePool%x.bed}_pool${i}.bed
 
-	bedtools intersect -a $BamFile -b $tmpBedFile > "${BamFile%.bam}"_intersect${i}.bam
-	BamInt="${BamFile%.bam}"_intersect${i}.bam
+	bedtools intersect -a $BamFile -b $tmpBedFile > ${BamFile%.bam}_intersect${i}.bam
+	BamInt=${BamFile%.bam}_intersect${i}.bam
 
 	clipped_out=$BamInt
 
@@ -170,13 +172,13 @@ for refType in $RefList; do
 	# RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
 	java -jar picard.jar AddOrReplaceReadGroups \
 	I=$clipped_out \
-	O="${clipped_out%.bam}".readGroupFix.bam \
+	O=${clipped_out%.bam}.readGroupFix.bam \
 	RGLB=lib1 \
 	RGPL=IonTorrent \
 	RGPU=unit1 \
 	RGSM=1
 
-	BamOut="${clipped_out%.bam}".readGroupFix.bam
+	BamOut=${clipped_out%.bam}.readGroupFix.bam
 
 	samtools index $BamOut
 
@@ -193,7 +195,7 @@ for refType in $RefList; do
 	   -R $Ref_FASTA \
 	   -V $VarFile \
 	   -L $tmpBedFile \
-	   -O "${VarFile%.vcf}"_IntFilt.vcf 
+	   -O ${VarFile%.vcf}_IntFilt.vcf 
 
 	done 
 
@@ -201,13 +203,13 @@ for refType in $RefList; do
 
 	# MERGER vcf filer fra hver pool:
 	java -jar picard.jar MergeVcfs \
-	-I "${BamFile%.bam}"_intersect1.readGroupFix_IntFilt.vcf \
-	-I "${BamFile%.bam}"_intersect2.readGroupFix_IntFilt.vcf \
-	-O "${BamFile%.bam}"_merged.vcf
+	-I ${BamFile%.bam}_intersect1.readGroupFix_IntFilt.vcf \
+	-I ${BamFile%.bam}_intersect2.readGroupFix_IntFilt.vcf \
+	-O ${BamFile%.bam}_merged.vcf
 
-	bcftools view "${BamFile%.bam}"_merged.vcf | awk '/^#/{print}; !/^#/{if (!uniq[$2]++) print}' > "${BamFile%.bam}"_merged_fix.vcf
+	bcftools view ${BamFile%.bam}_merged.vcf | awk '/^#/{print}; !/^#/{if (!uniq[$2]++) print}' > ${BamFile%.bam}_merged_fix.vcf
 
-	VarFile="${BamFile%.bam}"_merged_fix.vcf
+	VarFile=${BamFile%.bam}_merged_fix.vcf
 	
 	else # Hvis ref ikke er ampliconref, køres der normal variant calling
 		
@@ -217,13 +219,13 @@ for refType in $RefList; do
 	# RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
 	java -jar picard.jar AddOrReplaceReadGroups \
 	I=$BamFile \
-	O="${BamFile%.bam}".readGroupFix.bam \
+	O=${BamFile%.bam}.readGroupFix.bam \
 	RGLB=lib1 \
 	RGPL=IonTorrent \
 	RGPU=unit1 \
 	RGSM=1
 
-	BamOut="${BamFile%.bam}".readGroupFix.bam
+	BamOut=${BamFile%.bam}.readGroupFix.bam
 
 	samtools index $BamOut
 
@@ -235,14 +237,14 @@ for refType in $RefList; do
 	   -I $BamOut \
 	   -O $VarFile 
 
-	# Filtrerer for bedfil positioner
-	gatk --java-options "-Xmx4g" SelectVariants  \
-	   -R $Ref_FASTA \
-	   -V $VarFile \
-	   -L $tmpBedFile \
-	   -O "${VarFile%.vcf}"_IntFilt.vcf 
+	## Filtrerer for bedfil positioner
+	#gatk --java-options "-Xmx4g" SelectVariants  \
+	#   -R $Ref_FASTA \
+	#   -V $VarFile \
+	#   -L $tmpBedFile \
+	#   -O ${VarFile%.vcf}_IntFilt.vcf 
 
-	#VarFile="${VarFile%.vcf}"_IntFilt.vcf 
+	#VarFile=${VarFile%.vcf}_IntFilt.vcf 
 
 
 	fi
@@ -294,9 +296,9 @@ for refType in $RefList; do
    --filter-expression "MQ < 40.0" --filter-name MQ \
    --filter-expression "MQRankSum < -12.5" --filter-name MQRS \
    --filter-expression "ReadPosRankSum < -8.0" --filter-name LoRPRS \
-   -O "${VarFile%.vcf}"_filtered.vcf
+   -O ${VarFile%.vcf}_filtered.vcf
 
-   VarFile="${VarFile%.vcf}"_filtered.vcf
+   VarFile=${VarFile%.vcf}_filtered.vcf
 
    # Getting filtered stats
    # Getting depth stats
@@ -329,29 +331,29 @@ for refType in $RefList; do
 	sed 's/^.*;ReadPosRankSum=\([0-9]*.[0-9]*\);.*$/\1/' > $vcfstatF/ReadPosRankSum_filt.txt
 
 
-    #VarFile="${VarFile%.vcf}".filtEx.vcf
+    #VarFile=${VarFile%.vcf}.filtEx.vcf
 
 
-	# Indsætter mismatch count i samlet fil over alle alignments, for kun de filtrerede varianter
-	echo $refType $(grep -v '^#' "${VarFile%.vcf}"_IntFilt.vcf | wc -l) >> $MMcountFile_filt
+	# Indsætter mismatch count i samlet fil over alle alignments
+	echo $refType $(grep -v '^#' $VarFile | wc -l) >> $MMcountFile_filt
 
-	sed '/^##source=HaplotypeCaller/d' $VarFile > "${VarFile%.vcf}"_headerfix.vcf
+	sed '/^##source=HaplotypeCaller/d' $VarFile > ${VarFile%.vcf}_headerfix.vcf
 
 	# Omdøber slutfil til mere læsbart navn og ligger i slutmappe
-	mv $currentF/"${refType}".sort.dup.bam $currentF/ResultFiles/"${FastQFile}"_"${refType}".sort.bam 
-	mv $currentF/"${refType}".sort.dup.bam.bai $currentF/ResultFiles/"${FastQFile}"_"${refType}".sort.bam.bai 
-	mv "${VarFile%.vcf}"_headerfix.vcf $currentF/ResultFiles/"${FastQFile}"_"${refType}".vcf
-	mv "${VarFile%.vcf}".vcf.idx $currentF/ResultFiles/"${FastQFile}"_"${refType}".vcf.idx
+	mv $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam 
+	mv $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai 
+	mv ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf
+	mv ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx
 
 
 
 done
 
-sort -k2 -n $MMcountFile > "${MMcountFile}".sort # Sorting for least mismatches
-mv "${MMcountFile}".sort $MMcountFile # Renaming mismatch file
+sort -k2 -n $MMcountFile > ${MMcountFile}.sort # Sorting for least mismatches
+mv ${MMcountFile}.sort $MMcountFile # Renaming mismatch file
 
-sort -k2 -n $MMcountFile_filt > "${MMcountFile}"_filt.sort # Sorting for least mismatches
-mv "${MMcountFile}"_filt.sort $MMcountFile_filt # Renaming mismatch file
+sort -k2 -n $MMcountFile_filt > ${MMcountFile}_filt.sort # Sorting for least mismatches
+mv ${MMcountFile}_filt.sort $MMcountFile_filt # Renaming mismatch file
 
 # Rydder op
 # Sikrer at RefF er korrekt angivet, så der ikke slettes for meget
@@ -361,9 +363,9 @@ mv "${MMcountFile}"_filt.sort $MMcountFile_filt # Renaming mismatch file
 #if [ ${#RunName} -gt 0 ]; then
 #	rm -r $RefF
 #fi
-rm -f $RefdF/RefSubtyper_"${RunName}".txt
+rm -f $RefdF/RefSubtyper_${RunName}.txt
 # Fjerner filtreret fastq, da den ikke skal bruges længere
-#rm -f $SeqF/"${FastQFile}"_filt.fastq
+#rm -f $SeqF/${FastQFile}_filt.fastq
 
 
 

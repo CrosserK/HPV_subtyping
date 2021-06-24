@@ -4,7 +4,7 @@
 # Kun ændre i "Define folders" sektion og kør 
 
 ########## Define Folders ##########
-SuperRunName=Exome_50_320_ampliconcalls_PaVE_revised  #Exome_50_320_ampliconcalls_PaVE_revised
+SuperRunName=Karoline_run_24_6_2021  #Exome_50_320_ampliconcalls_PaVE_revised
 MainF=/home/pato/Skrivebord/HPV16_projekt
 VirStraindb=HPV16_16_virstrain_revised
 QualTrim=20 # Qualtrim til cutadapt
@@ -98,8 +98,12 @@ fi
 ########################################################################
 
 
-# Bruger _filt.fastq filer fra SUBTYPING
 ############## ALIGNMENT AND VARIANT CALLING ##########################
+# Bruger _filt.fastq filer fra subtyping
+# Laver 1 fil med alle referencer til No_call_script
+find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
+sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt
+
 START=1
 END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
 for (( linenumber=$START; linenumber<=$END; linenumber++ ))
@@ -121,6 +125,8 @@ Rscriptfolder=$MainF/Scripts/R
 MultiFQFile=$(echo FASTQfiles_$SuperRunName)
 SuperRunFolder=$SuperRunName
 
+# Rscript -e "library(GenomicFeatures)"
+
 
 if [ $RunAnnoRSCript = true ]; then
 
@@ -128,15 +134,23 @@ if [ $RunAnnoRSCript = true ]; then
 	VirSupOut=$MainF/VirStrain_run/$SuperRunName
 	RunName=${FastqInput}_run
 	VirRunOut_run=$VirSupOut/$RunName
-	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash.R $MainF $MainF/Annotation_results/ $SuperRunName $MultiFQFile
+	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash.R $MainF $MainF/Annotation_results $SuperRunName $MultiFQFile
 
 fi
 
-# Dette script skal bruge liste over alle referencer der køres
+# Dette script skal bruge liste over alle referencer der køres. Fungerer kun hvis alle fastq filer har været alignet til samme referencer
 
 if [ $RunSiteCovScript = true ]; then
 
-	Specific_site_cov.sh $FastqRunInput $FastqInput $SuperRunFolder $RefListFile
+	START=1
+	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+	for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+	Specific_site_cov.sh $FastqRunInput $FastqInput $SuperRunFolder #2> /dev/null
+	
+	done
 
 fi
 
@@ -145,23 +159,95 @@ fi
 
 if [ $RunNoCallsScript = true ]; then
 
+	START=1
+	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+	for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+
 	for refType in $RefList; do
+
+	if [ -d $ResultsF/$FastqRunInput/$refType ]; then
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF/Annotation_results/ $refType $SuperRunName $MultiFQFile 
 	# [SaveDir] [ReferenceName] [SuperRunName] [ListOfFastqFiles]
+	
+	fi
+
+	done
 	done
 
 fi
 
 
-# Rscript $Rscriptfolder/Annotation_report.rmd $MainF/Annotation_results/ $SuperRunName $refType
+######################### SIFT Amino acid substitution protein effect #########################
+#OBS: HARDCODED TIL HPV16, søg HPV16-, hvis det skal ændres
+
+# gff3 til protein fasta fil
+MainF=/home/pato/Skrivebord/HPV16_projekt
+
+File=$MainF/References/GFFfiles/K02718.1_revised.gff3
+#Translationer:
+grep "CDS" $File | awk '{print $9}' | sed 's/.*translation=//' | sed 's/;.*//' > translations.txt
+# tager alle linjer med CDS | printer 9. kolonne | tager alt efter translation= | tager alt før ";" 
+# Protein navne:
+grep "CDS" $File | awk '{print $9}' | sed 's/.*protein_id=//' | sed 's/;.*//' > GeneNames.txt
+
+# Samler til 1 fil
 
 
+rm -f $MainF/SIFT4G/Gene_fa.fasta
+touch $MainF/SIFT4G/Gene_fa.fasta
+START=1
+END=$(awk 'END{print NR}' translations.txt)
+for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+	Gene=$(cat GeneNames.txt | awk -v var="$linenumber" 'NR==var {print}') 
+	Translation=$(cat translations.txt | awk -v var="$linenumber" 'NR==var {print}')
+	Header=$(echo \>${Gene})
+	echo -e "$Header""\n""$Translation" >> $MainF/SIFT4G/Gene_fa.fasta
+done
+
+rm -f translations.txt
+rm -f GeneNames.txt
 
 
+# Oversætter fundne substitutioner til en protein fasta fil
+#Fil med substitutioner
+FQFile=$MainF/Annotation_results/FASTQfiles_Karoline_run_test2_AnnotationFrequency_K02718.1_revised.txt
+sed 's/.*p.//' $FQFile | sed 's/ .*//' | awk 'NR!=1 {print}' > substitutions.txt
+# Finder alt efter p. | finder alt før [space] | ignorerer første linje, da den er kolonne navn 
+cut -d ' ' -f3 $FQFile | awk 'NR!=1 {print}' > Genes.txt
 
 
+# Generérer protein fasta fil for hver subs
+START=1
+END=$(awk 'END{print NR}' Genes.txt)
+
+for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+	GeneToMod=$(awk -v var="$linenumber" 'NR==var {print}' Genes.txt)
+	SubPos=$(awk -v var="$linenumber" 'NR==var {print}' substitutions.txt | grep -o -E '[0-9]+')
+	# Finder linje | Finder position
+	SubAA=$(awk -v var="$linenumber" 'NR==var {print}' substitutions.txt | sed "s/.*$SubPos//")
+
+	# Tager header
+	grep $GeneToMod -A 1 $MainF/SIFT4G/Gene_fa.fasta | awk 'NR==1 {print}' > head.txt
+	# Finder gen transl og -A giver også næste N linjer | Fjerner første linje, da den er kolonne navn
+	grep $GeneToMod -A 1 $MainF/SIFT4G/Gene_fa.fasta | awk 'NR==2 {print}' | sed "s/./$SubAA/$SubPos" > ModdedGene.txt
+	cat head.txt ModdedGene.txt > $MainF/SIFT4G/Query_inst_${linenumber}.fasta
+	echo $(awk -v var="$linenumber" 'NR==var {print}' substitutions.txt ) >> $MainF/SIFT4G/SUBS/HPV16-${GeneToMod}.subst
+	rm -f head.txt
+	rm -f ModdedGene.txt
+done
+rm -f genes.txt
+rm -f substitutions.txt
 
 
+# SIFT4G:
+for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+linenumber=2
+/home/pato/sift4g/bin/sift4g -q $MainF/SIFT4G/Test_query.fasta --subst $MainF/SIFT4G/SUBS -d $MainF/SIFT4G/Gene_fa.fasta --out $MainF/SIFT4G/
+# --outfmt light
+done
 
 
 
