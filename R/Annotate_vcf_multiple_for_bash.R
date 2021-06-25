@@ -56,8 +56,9 @@ for(i in MultiFastqList){
   
   Fastqname <- i
   Runname <- paste(i,"_run",sep="")
-  Refname <- read.table(paste(MainF,"/", "VirStrain_run/", SuperRunName,"/", Runname,"/","Revised_SubTypeCalls.txt", sep = ""))
-  Refname <- Refname[1,1]
+  #Refname <- read.table(paste(MainF,"/", "VirStrain_run/", SuperRunName,"/", Runname,"/","Revised_SubTypeCalls.txt", sep = ""))
+  #Refname <- Refname[1,1]
+  Refname <- "K02718.1_revised"
   vcfname <- paste(i, "_", Refname,".vcf", sep ="") # _filtered.filtEx_headerfix
   gffname <- paste(Refname,".gff3", sep ="")
   
@@ -130,8 +131,8 @@ for(i in MultiFastqList){
 }
 
 print("Job's done!")
-print(paste("Number of noelements found: ", noelement))
-print(paste("Number of nofiltered vcf: ", novcfcounter))
+print(paste("Number of vcf with no variants: ", noelement))
+print(paste("Number of vcf files not found: ", novcfcounter))
 
 # Find each unique instance of change:
 
