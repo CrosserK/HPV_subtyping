@@ -18,10 +18,10 @@ cutadaptMaxsize=$8
 #FastQFile=Pt_11_DNA.IonXpress_085 #input uden extenstion
 #VirStrain_customdb=HPV16_16_virstrain
 
-mkdir -p $MainF/VirStrain_run/$SuperRunName/$RunName
+mkdir -p $MainF/VirStrain_run/$SuperRunName/Genotypecalls/$RunName
 #Define Folders and params
 FQin=$MainF/FASTQ/${FastQFile}.fastq
-SuperRunOut=$MainF/VirStrain_run/$SuperRunName
+SuperRunOut=$MainF/VirStrain_run/$SuperRunName/Genotypecalls
 Resultsout=$SuperRunOut/$RunName
 VirStrain_db=$VirStrain_customdb
 

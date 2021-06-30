@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 # Predict amino acid changes from vcf, gff3 and fasta files, this version will output format for multiple fastqfiles
-# in a convinient way
+# in a convenient way
 
 #install.packages("BiocManager")
 #BiocManager::install("VariantAnnotation")
@@ -78,7 +78,7 @@ for(i in MultiFastqList){
     next
   }
 
-  # Error check som fortsætter loopet hvis der ingen varianter i vcf fil er
+  # Error check som fortsætter til næste iteration i loopet hvis der ingen varianter i vcf fil er
   options(warn=2)
   no_elem <- try(predictCoding(c_vcf, Gene_anno, seqSource = faf))
   if("try-error" %in% class(no_elem)){

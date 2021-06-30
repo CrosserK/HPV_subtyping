@@ -9,7 +9,6 @@ mafft-linsi --thread 12 .fa > .mafft
 # RAxMML and dendroscope
 
 
-
 MainF=/home/pato/Skrivebord/HPV16_projekt
 RAxDir=$MainF/RAxML
 DNA=$MainF/References/0Andre/Combined_mainlines_wRevised_wHPV-mTypes.mafft
@@ -22,7 +21,7 @@ mkdir -p $OutDir
 raxmlHPC -f a -m GTRGAMMA -p 12345 -x 12345 -# $NumberOfTrees -s $DNA -n $Threads -w $OutDir
 mv $OutDir/RAxML_bipartitions.T12 $OutDir/RAxML_bipartitions.dendro 
 
-# Kør Dendroscope
+# Kør Dendroscope og load .dendro fil
 
 bash '/home/pato/dendroscope/Dendroscope'
 

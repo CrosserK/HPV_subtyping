@@ -4,9 +4,9 @@
 
 ########## Indstillinger ##########
 # Put alle fastqfiler der skal testes ind i FASTQ mappe og sæt følgende:
-Name=HPVSubtyping_22fastq_28_6_2021  #Exome_50_320_ampliconcalls_PaVE_revised
+Name=Karoline_run 
 MainF=/home/pato/Skrivebord/HPV16_projekt
-VirStraindb=HPV16_16_virstrain_revised
+VirStrainMaindb=$MainF/References/Combined_mainlines_wRevised_wHPV-mTypes
 QualTrim=20 # Qualtrim til cutadapt
 MinLen=50 # Cutadapt fjerner alle reads under denne grænse
 MaxLen=320 # Cutadapt fjerner alle reads over denne grænse
@@ -55,11 +55,11 @@ if [ $cutOutsideAmplicons = true ]; then
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 	
 	PrimerSeqCut.sh
  	done
-
+ 	
 fi
 
 
-############################# FASTQ FILTRERING & SUBTYPING ###############################
+############################# FASTQ FILTRERING, MAIN GENOTYPING & SUBTYPING ###############################
 # Finder ligenu top 3 most possible strains
 conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
 
@@ -70,12 +70,43 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ ))
 do
 	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
-	VirStrain_subtyping.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStraindb $QualTrim $MinLen $MaxLen
+	VirStrain_genotyping.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainMaindb $QualTrim $MinLen $MaxLen
 	echo $linenumber of $END
+done
+
+
+# SUBTYPING
+START=1
+END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+
+for (( linenumber=$START; linenumber<=$END; linenumber++ ))
+do
+
+	#TEST
+	#linenumber=1
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+	
+	# Finder kaldt maintype og henter korrekt VirStrain subtypedatabase
+	SuperRunOut=$MainF/VirStrain_run/$SuperRunName/Genotypecalls
+	Resultsout=$SuperRunOut/$FastqRunInput
+	
+	MainCallFile=$Resultsout/SubtypeCall.txt
+	VirStrainSub=$(grep -m1 -o "^HPV[0-9]*" $MainCallFile) # -m1 for kun at søge første linje og -o for kun at output match og ikke hele linje med match
+	BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
+	VirStrainSubDB=$MainF/References/VirStrainDBs_HPV_sub/$BaseDBName
+
+
+	VirStrain_genotypeToSubtype.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainSubDB $VirStrainSub
+	echo $linenumber of $END
+
 done
 
 conda deactivate
 #######################################################################
+
+
+
 
 
 ####### REFERENCE INDEXERING TIL ALIGNMENT OG VARIANTCALLING ##########
@@ -105,6 +136,7 @@ done
 fi
 ########################################################################
 
+# OBS LIGENU SAT TIL ALTID AT BRUGE K02718.1_revised. Info i script for at bruge reference fundet fra VirStrain
 
 ############## ALIGNMENT AND VARIANT CALLING ##########################
 # Bruger _filt.fastq filer fra subtyping

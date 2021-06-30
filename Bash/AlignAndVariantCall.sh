@@ -16,13 +16,13 @@ VirRunOut_run=$5
 BedFileNameX=$6
 AmpliconRef=$7
 
-# HVIS EN SPECIFIK REFERENCE, CTRL+F: "HER DEFINERES REFERENCER"
-customRef=true
+# HVIS EN SPECIFIK REFERENCE, CTRL+F: "HER DEFINERES REFERENCER", og sæt customRef=true
+customRef=false
 
 # TEST
-#RunName=pt_7.IonXpress_038_run
-#FastQFile=pt_7.IonXpress_038 #input uden extenstion
-#SuperRunFolder=Karoline_run_test
+#RunName=Pt_33_RNA.IonXpress_087_run
+#FastQFile=Pt_33_RNA.IonXpress_087 #input uden extenstion
+#SuperRunFolder=HPVSubtyping_22fastq_28_6_2021
 #MainF=/home/pato/Skrivebord/HPV16_projekt
 #VirRunOut_run=/home/pato/Skrivebord/HPV16_projekt/VirStrain_run/"{SuperRunFolder}"/"${RunName}"
 #BedFileNameX=IAD209923_226_Designed_compl
@@ -32,8 +32,6 @@ customRef=true
 #echo $RunName $FastQFile $SuperRunFolder $MainF $VirRunOut_run $BedFileNameX
 #echo og Called_subtype er $Called_subtype
 ################
-
-
 
 ###################### EDIT ##########################
 #Define Folders and params
@@ -56,12 +54,12 @@ sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_"${RunName}".tx
 RefListOrigin=$(< $RefdF/RefSubtyper_"${RunName}".txt) # Finder navn på alle referencer i mappe
 
 # HER DEFINERES REFERENCER
-RefListCalls=K02718.1_revised # Husk at comment RefList=$(< $RevRefs) og uncomment RefList=$RefListCalls
-# RefListCalls=$(< $VirRunOut_run/SubtypeCall.txt)
+# RefListCalls=HPV16_K02718_1_revised # Husk at comment RefList=$(< $RevRefs) og uncomment RefList=$RefListCalls lidt længere nede, hvis der skiftes til at bruge 1 bestemt reference
+RefListCalls=$(< $VirRunOut_run/SubtypeCall.txt) # Uncomment hvis der skal bruges bedste call fra VirStrain som reference 
 
 
 
-# Clearer RefList for referencer som ikke er i RefList mappe (eks fordi der ikke kunne kaldes op til 3 mulige typer og der derfor er blevet trukket forkert string ud)
+# Clearer RefList for referencer som ikke er i RefList mappe (eks fordi der ikke kunne kaldes op til 3 mulige typer)
 rm -f $VirRunOut_run/Revised_SubTypeCalls.txt # Sletter for at sikre at der ikke appendes til fil fra tidligere test kørsel
 touch $VirRunOut_run/Revised_SubTypeCalls.txt
 RevRefs=$VirRunOut_run/Revised_SubTypeCalls.txt
@@ -89,8 +87,10 @@ fi
 
 # Tager nu revideret subtype fil:
 RefList=$(< $RevRefs)
+# RefList=$RefListCalls
 
-echo Til $FastQFile bruger fil $RefdF/RefSubtyper_"${RunName}".txt og har revideret til "$RefList"
+
+echo -e Til $FastQFile bruger fil $RefdF/RefSubtyper_"${RunName}".txt og har revideret til '\n' "$RefList"
 
 ######################################################################################
 
@@ -235,16 +235,6 @@ for refType in $RefList; do
 	   -I $BamOut \
 	   -O $VarFile 
 
-	# Filtrerer for bedfil positioner
-	gatk --java-options "-Xmx4g" SelectVariants  \
-	   -R $Ref_FASTA \
-	   -V $VarFile \
-	   -L $tmpBedFile \
-	   -O "${VarFile%.vcf}"_IntFilt.vcf 
-
-	#VarFile="${VarFile%.vcf}"_IntFilt.vcf 
-
-
 	fi
 	
 	# Indsætter mismatch count i samlet fil over alle alignments
@@ -328,22 +318,33 @@ for refType in $RefList; do
 	cut -f 8 | \
 	sed 's/^.*;ReadPosRankSum=\([0-9]*.[0-9]*\);.*$/\1/' > $vcfstatF/ReadPosRankSum_filt.txt
 
+	# Excluderer filtrerede varianter. Dette bliver gjort uanset om der blev filtreret for amplicon position eller ej
+	gatk --java-options "-Xmx4g" SelectVariants  \
+	   -R $Ref_FASTA \
+	   -V $VarFile \
+	   --exclude-filtered \
+	   -O "${VarFile%.vcf}"_FiltEx.vcf
 
     #VarFile="${VarFile%.vcf}".filtEx.vcf
 
 
 	# Indsætter mismatch count i samlet fil over alle alignments, for kun de filtrerede varianter
-	echo $refType $(grep -v '^#' "${VarFile%.vcf}"_IntFilt.vcf | wc -l) >> $MMcountFile_filt
+	echo $refType $(grep -v '^#' ${VarFile%.vcf}_FiltEx.vcf | wc -l) >> $MMcountFile_filt
 
-	sed '/^##source=HaplotypeCaller/d' $VarFile > "${VarFile%.vcf}"_headerfix.vcf
+	sed '/^##source=HaplotypeCaller/d' $VarFile > ${VarFile%.vcf}_headerfix.vcf # Fjerner duplicate "source"
+	sed '/^##source=HaplotypeCaller/d' ${VarFile%.vcf}_FiltEx.vcf  > ${VarFile%.vcf}_FiltEx_headerfix.vcf # Fjerner duplicate "source"
+
 
 	# Omdøber slutfil til mere læsbart navn og ligger i slutmappe
-	mv $currentF/"${refType}".sort.dup.bam $currentF/ResultFiles/"${FastQFile}"_"${refType}".sort.bam 
-	mv $currentF/"${refType}".sort.dup.bam.bai $currentF/ResultFiles/"${FastQFile}"_"${refType}".sort.bam.bai 
-	mv "${VarFile%.vcf}"_headerfix.vcf $currentF/ResultFiles/"${FastQFile}"_"${refType}".vcf
-	mv "${VarFile%.vcf}".vcf.idx $currentF/ResultFiles/"${FastQFile}"_"${refType}".vcf.idx
-
-
+	# echo cp $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
+	# echo cp $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
+	# echo cp ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
+	# echo cp ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
+	mv $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
+	mv $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
+	mv ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
+	mv ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
+	rm ${VarFile%.vcf}_FiltEx.vcf; 
 
 done
 
