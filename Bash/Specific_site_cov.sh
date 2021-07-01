@@ -11,9 +11,9 @@ RunName=$1
 FastQFile=$2 #input uden extenstion
 SuperRunName=$3
 
-RunName=pt_9.IonXpress_044_run
-FastQFile=pt_9.IonXpress_044 #input uden extenstion
-SuperRunName=Karoline_run_1007_30062021
+#RunName=pt_9.IonXpress_044_run
+#FastQFile=pt_9.IonXpress_044 #input uden extenstion
+#SuperRunName=Karoline_run_1007_30062021
 
 
 RefListFile=/home/pato/Skrivebord/HPV16_projekt/ReferenceDetails/RefSubtyper_latest.txt
@@ -24,6 +24,9 @@ MainF=/home/pato/Skrivebord/HPV16_projekt
 FastQF=$MainF/FASTQ
 
 SuperRunFolder=$SuperRunName
+
+SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
+DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; ResultsF=$MainF/Results/$SuperRunFolder
 #####################################################################################
 #RefList=$(< $RefdF/${RefListFile}.txt) # Finder navn på alle referencer
 RefList=$(< $RefListFile) 
@@ -36,6 +39,7 @@ VirStrainSub=$(awk 'NR==1 {print; exit}' $SubCallFile)
 
 # Når der skal bruges bedste match fra VirStrain:
 RefList=$VirStrainSub
+
 
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 

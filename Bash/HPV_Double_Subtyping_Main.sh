@@ -136,9 +136,8 @@ done
 fi
 ########################################################################
 
-# OBS LIGENU SAT TIL ALTID AT BRUGE K02718.1_revised. Info i script for at bruge reference fundet fra VirStrain
 
-############## ALIGNMENT AND VARIANT CALLING ##########################
+############## REVUDERING AF SUBTYPECALL, ALIGNMENT & VARIANT CALLING ##########################
 # Bruger _filt.fastq filer fra subtyping
 # Laver 1 fil med alle referencer til No_call_script
 find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
@@ -156,9 +155,7 @@ do
 	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirRunOut_run $BedFileNameX $AmpliconRef
 	echo fil $FastqInput færdig... $linenumber of $END
 done
-#######################################################################
-
-# Ovenstående returnerer RevRefCalls variabel, som er de korrekte fundne subtyper
+################################################################################################
 
 # Følgende scripts læser hvilke FASTQfiler der skal behandles fra FASTQfiles_[navn].txt og FASTQfiles_[navn]_run.txt filerne
 
@@ -210,8 +207,8 @@ if [ $RunNoCallsScript = true ]; then
 fi
 
 # Fjerner alle filtrerede fastqfiler der blev genereret, så de ikke bliver filtreret en gang til ved ny kørsel og der opstår dobbeltfiler
-rm $MainF/FASTQ/*_filt.fastq;
-#done
+# rm $MainF/FASTQ/*_filt.fastq;
+# done
 
 
 

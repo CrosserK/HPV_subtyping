@@ -17,7 +17,7 @@ BedFileNameX=$6
 AmpliconRef=$7
 
 # HVIS EN SPECIFIK REFERENCE, CTRL+F: "HER DEFINERES REFERENCER", og sæt customRef=true
-customRef=false
+customRef=true
 
 # TEST
 #RunName=Pt_33_RNA.IonXpress_087_run
@@ -54,8 +54,8 @@ sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_"${RunName}".tx
 RefListOrigin=$(< $RefdF/RefSubtyper_"${RunName}".txt) # Finder navn på alle referencer i mappe
 
 # HER DEFINERES REFERENCER
-# RefListCalls=HPV16_K02718_1_revised # Husk at comment RefList=$(< $RevRefs) og uncomment RefList=$RefListCalls lidt længere nede, hvis der skiftes til at bruge 1 bestemt reference
-RefListCalls=$(< $VirRunOut_run/SubtypeCall.txt) # Uncomment hvis der skal bruges bedste call fra VirStrain som reference 
+RefListCalls=HPV16_K02718_1_revised # Husk at comment RefList=$(< $RevRefs) og uncomment RefList=$RefListCalls lidt længere nede, hvis der skiftes til at bruge 1 bestemt reference
+#RefListCalls=$(< $VirRunOut_run/SubtypeCall.txt) # Uncomment hvis der skal bruges bedste call fra VirStrain som reference 
 
 
 
@@ -86,8 +86,8 @@ fi
 ##############################################################
 
 # Tager nu revideret subtype fil:
-RefList=$(< $RevRefs)
-# RefList=$RefListCalls
+#RefList=$(< $RevRefs)
+RefList=$RefListCalls
 
 
 echo -e Til $FastQFile bruger fil $RefdF/RefSubtyper_"${RunName}".txt og har revideret til '\n' "$RefList"

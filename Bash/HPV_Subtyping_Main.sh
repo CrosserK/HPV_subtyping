@@ -4,7 +4,7 @@
 
 ########## Indstillinger ##########
 # Put alle fastqfiler der skal testes ind i FASTQ mappe og sæt følgende:
-Name=HPVSubtyping_22fastq_28_6_2021  #Exome_50_320_ampliconcalls_PaVE_revised
+Name=Karoline_92fastq  #Exome_50_320_ampliconcalls_PaVE_revised
 MainF=/home/pato/Skrivebord/HPV16_projekt
 VirStraindb=HPV16_16_virstrain_revised
 QualTrim=20 # Qualtrim til cutadapt
