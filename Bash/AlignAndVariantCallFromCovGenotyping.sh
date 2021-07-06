@@ -53,29 +53,15 @@ find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/
 sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_"${RunName}".txt
 RefListOrigin=$(< $RefdF/RefSubtyper_"${RunName}".txt) # Finder navn på alle referencer i mappe
 
-# HER DEFINERES REFERENCER
-RefList=$(< $VirRunOut_run/SubtypeCall.txt) # Uncomment hvis VirStrain calls skal bruges som referencer
+# HER DEFINERES REFERENCE FUNDET AF KOMBINEREDE REFERENCER MODUL
+RefList=$(< $RefF/Combined_refs/$FastQFile) 
 # RefList=$(< $SeqF/SuperRunName/SubtypeCallFromCov.txt) # Uncomment hvis der skal bruges custom referencer fra customRefGenerator.sh
-RefList="HPV6_X00203_1_revised	HPV16_K02718_1_revised	HPV18_X05015_1_revised	HPV30_X74474_1	HPV31_J04353_1	HPV33_M12732_1	HPV35_X74477_1	HPV39_M62849_1	HPV45_X74479_1	HPV51_M62877_1	HPV52_X74481_1	HPV53_X74482_1_revised	HPV56_X74483_1_revised	HPV58_D90400_1 HPV59_X77858_1_revised	HPV66_U31794_1	HPV67_D21208_1	HPV68_DQ080079_1	HPV69_AB027020_1	HPV70_U21941_1	HPV73_X94165_1	HPV82_AB027021_1_revised" # Uncomment, hvis revised fil skal bruges som refliste
+# RefList="HPV6_X00203_1_revised	HPV18_X05015_1_revised	HPV53_X74482_1_revised	HPV56_X74483_1_revised	HPV59_X77858_1_revised	HPV82_AB027021_1_revised" # Uncomment, hvis revised fil skal bruges som refliste
 # Hvis der vælges flere kan de skrives på format (tab separeret)
 
 echo -e Til $FastQFile bruger fil $RefdF/RefSubtyper_"${RunName}".txt og har revideret til '\n' "$RefList"
 
 ######################################################################################
-
-############### FASTQ preprocessing and filtering (DATA CLEANUP) ##################### 
-# Se read længder og antal reads med awk
-#cat $SeqF/"${FastQFile}".fastq | awk '{if(NR%4==2) print length($1)}' | sort -n | uniq -c  # Read lenghts, 1. kolonne er antal reads, 2. kolonne er længde
-# echo $(cat $SeqF/"${FastQFile}".fastq | wc -l)/4 | bc # Number of reads
-######################################################################################
-
-####################### FASTQ QC & Filter #############################
-# # -O Require MINLENGTH overlap between read and adapter for an adapter to be found. Default: 3
-#fastqc -o $QualF $SeqF/"${FastQFile}".fastq 
-# cutadapt -q $QualTrim -m $cutadaptMinsize -M $cutadaptMaxsize $SeqF/"${FastQFile}".fastq -o $SeqF/"${FastQFile}"_filt.fastq
-#fastqc -o $QualF $SeqF/"${FastQFile}"_filt.fastq 
-# firefox $QualF $SeqF/"${FastQFile}"_filt_fastqc.html &
-##################### DEFINING RUNFOLDER ######################
 
 mkdir -p $ResultsF
 mkdir -p $ResultsF/$RunName
@@ -89,10 +75,7 @@ touch $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
 MMcountFile=$ResultsF/$RunName/MismatchCounts_"${RunName}".txt
 MMcountFile_filt=$ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt # Filtered MM count file
 
-
-
 for refType in $RefList; do 
-
 
 	####TEST
 	#refType=K02718.1_revised
@@ -320,11 +303,11 @@ for refType in $RefList; do
 
 done
 
-#sort -k2 -n $MMcountFile > "${MMcountFile}".sort # Sorting for least mismatches
-#mv "${MMcountFile}".sort $MMcountFile # Renaming mismatch file
+sort -k2 -n $MMcountFile > "${MMcountFile}".sort # Sorting for least mismatches
+mv "${MMcountFile}".sort $MMcountFile # Renaming mismatch file
 
-#sort -k2 -n $MMcountFile_filt > "${MMcountFile}"_filt.sort # Sorting for least mismatches
-#mv "${MMcountFile}"_filt.sort $MMcountFile_filt # Renaming mismatch file
+sort -k2 -n $MMcountFile_filt > "${MMcountFile}"_filt.sort # Sorting for least mismatches
+mv "${MMcountFile}"_filt.sort $MMcountFile_filt # Renaming mismatch file
 
 # Rydder op
 # Sikrer at RefF er korrekt angivet, så der ikke slettes for meget
@@ -337,49 +320,3 @@ done
 rm -f $RefdF/RefSubtyper_"${RunName}".txt
 # Fjerner filtreret fastq, da den ikke skal bruges længere
 #rm -f $SeqF/"${FastQFile}"_filt.fastq
-
-
-
-
-
-
-
-
-
-
-# Generér subtypecalls.txt manuelt
-#rm -f $VirRunOut_run/SubtypeCall.txt
-#printf "HPV6_X00203_1_revised\nHPV16_K02718_1_revised\nHPV18_X05015_1_revised\nHPV30_X74474_1\nHPV31_J04353_1\nHPV33_M12732_1\nHPV35_X74477_1\nHPV39_M62849_1\nHPV45_X74479_1\nHPV51_M62877_1\nHPV52_X74481_1\nHPV53_X74482_1_revised\nHPV56_X74483_1_revised\nHPV58_D90400_1\nHPV59_X77858_1_revised\nHPV66_U31794_1\nHPV67_D21208_1\nHPV68_DQ080079_1\nHPV69_AB027020_1\nHPV70_U21941_1\nHPV73_X94165_1\nHPV82_AB027021_1_revised" \
-#>> $VirRunOut_run/SubtypeCall.txt
-
-
-# GAMMELT der tjekker om reference eksisterer i referencemappe
-# Clearer RefList for referencer som ikke er i RefList mappe (eks fordi der ikke kunne kaldes op til 3 mulige typer)
-# rm -f $VirRunOut_run/Revised_SubTypeCalls.txt # Sletter for at sikre at der ikke appendes til fil fra tidligere test kørsel
-# touch $VirRunOut_run/Revised_SubTypeCalls.txt
-# RevRefs=$VirRunOut_run/Revised_SubTypeCalls.txt
-
-echo Har kald: $RefListCalls
-
-############## Clear unviable subtype calls #################
-#if [ "$customRef" = false ]; then
-#for refCall in $RefListCalls; do
-#
-#	for refType in $RefListOrigin; do
-#	if [ "$refType" == "$refCall" ]; then
-#	Check=$(grep "$refCall" $VirRunOut_run/SubtypeCall.txt)
-#	if [ ${#Check} -gt 0 ]; then
-#	echo $refCall >> $RevRefs
-#	fi
-#	fi
-#	done
-#
-#done
-#else 
-#	echo $RefListCalls >> $RevRefs
-#fi
-##############################################################
-
-# Tager nu revideret subtype fil:
-# RefList=$(< $RevRefs)
-# RefList=$RefListCalls

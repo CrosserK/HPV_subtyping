@@ -38,6 +38,22 @@ done
 
 
 
+# For genbank filer der skal laves om til gff3 filer
+FilePath=/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles
+for i in $FilePath/gbFilesToUpdateGff3/*.gb; do
+
+	 bp_genbank2gff $i --viral --stdout > ${i%gb}gff3 
+
+	FileName=${f##*/}
+	ChrName=${FileName%.gff3}
+	NewChrName=$( sed 's/\./_/g' <<< "$ChrName" ) # <<< is a here-string
+	
+	# Ændrer chrnavn i fil
+	sed -i "s/$ChrName/$NewChrName/g" $f
+
+done
+
+
 
 
 

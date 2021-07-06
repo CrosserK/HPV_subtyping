@@ -3,7 +3,8 @@
 # Finder HPV maintyper ud fra tabel fra PaVE. Hver maintype er tilknyttet et genbank ID (eg. K02718), men det fulde ID står ikke i tabellen. Der mangler ofte ".1" 
 # eller ".2". Navngiver alle hovedtyper fra GenbankID til HPVx_GenbankID_y, hvor x er HPV nummer og y er nummeret for ".1" eller ".2" og gør det samme for
 # deres chrname i filen. For dem som har revised PaVE versioner, tilføjes også "_revised" til endelsen. Dette gøres for både .fasta og .gff3 filer
-# Har en tabel med HPV main typer fra PaVE og har en mappe med alle fasta'er og gff3'er navngivet med GenbankID 
+# Har en tabel med HPV main typer fra PaVE og har en mappe med alle fasta'er i $FilePath/PaVE_Main&Sub og gff3'er i mappedn $FilePath/PaVE_Main&SubGFF3 
+# begge filformater navngivet efter GenbankID (e.g. "K02718.1.fasta")
 
 
 # Get all mainlines of a HPV supertype from text table
@@ -182,7 +183,6 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 	# Finder alle subtyper under maintype
 	AllTypesList=($(cat $SubLineFile | grep "$HPVName\s" | awk '{print $5}')) # \s er for space. Sikrer at eks HPV16 ikke matcher HPV160
 
-
 	declare -a AllAddressList=($(find $RefF -name "${HPVName}_*" -type f))
 
 	if [ ${#AllAddressList} -gt 0 ]; then # Tester om der er fundet en fil (Der var en genbank ID ved det HPV nummer)
@@ -229,261 +229,141 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 	# Laver VirStrain database fra subtyperede filer
 
 
+done
 
 
+# Laver VirStrain database for alle subtyper. 
+conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
+cd VirStrain
+mkdir -p $FilePath/SubTypesCombined
+
+# Gør det først for alle HPV som har et nummer og derefter for alle HPV som har formatet HPV-mxxxxx
+for f in $FilePath/Combined_Fastas/HPV[0-9]*.fasta; do
+	
+	# Finder basename
+	HPVName=${f##*/}
+	mafft-linsi $f > $FilePath/MSAs/${HPVName%fasta}mafft
+	# Byggger database
+	VirStrain_customdb=$MainF/References/VirStrainDBs_HPV_sub/${HPVName%.fasta}_VirStrainDB
+	MAFFTIn=$FilePath/MSAs/${HPVName%fasta}mafft
+	python VirStrain_build.py -i $MAFFTIn -d $VirStrain_customdb -s 1
+
+done
+
+for f in $FilePath/Combined_Fastas/HPV-m*.fasta; do
+	
+	# Finder basename
+	HPVName=${f##*/}
+	mafft-linsi $f > $FilePath/MSAs/${HPVName%fasta}mafft
+	# Byggger database
+	VirStrain_customdb=$MainF/References/VirStrainDBs_HPV_sub/${HPVName%.fasta}_VirStrainDB
+	MAFFTIn=$FilePath/MSAs/${HPVName%fasta}mafft
+	python VirStrain_build.py -i $MAFFTIn -d $VirStrain_customdb -s 1
 
 done
 
 
 # Laver VirStrain database for alle Main typer
-
-find ^HPV
-
-
-
-
-
-
-
-
-
-
-
-
-
+RefF=$FilePath/PaVE_Main\&Sub
+mkdir -p $FilePath/MainsCombined
+# Samler 
+cat $RefF/HPV*.fasta > $FilePath/MainsCombined/AllMainCombined_wRevised_wHPVm-types.fasta
+# MSA
+mafft-linsi $FilePath/MainsCombined/AllMainCombined_wRevised_wHPVm-types.fasta > $FilePath/MainsCombined/AllMainCombined_wRevised_wHPVm-types.mafft
+# Ændrer stier og navne så de passer
+MainF=/home/pato/Skrivebord/HPV16_projekt
+VirStrain_customdb=$MainF/References/AllMainCombined_wRevised_wHPVm-types
+MAFFTIn=$FilePath/MainsCombined/AllMainCombined_wRevised_wHPVm-types.mafft
+# Byggger database
+python VirStrain_build.py -i $MAFFTIn -d $VirStrain_customdb -s 1
+conda deactivate
 
 
 
 
 
+# Fikser revised GFF3 filer. De revised filer findes kun som genbank fil fra PaVE. 
+# De skal derfor hentes ned manuelt og ligges i $FilePath/Revised_Genbank_files, med korrekte navne som script ovenover har givet, men med endelsen .gb.
+# De kan da omdannes fra genbank til gff3 filer med følgende script. 
+FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
+
+for f in $FilePath/Revised_Genbank_files/*.gb; do 
+
+	BaseName=${f##*/}
+	BaseN=${BaseName%.gb}
+
+	bp_genbank2gff $f --viral --stdout > ${f%gb}gff3
+	# The script seems to remove the ".1" from "K02718.1" in the gff3 file
+
+	# Læser HPVnummer
+	HPVName=$(echo "$BaseN" | grep -o "HPV[0-9]*")
+
+	# HUSK følgende 3 korrigeringer!
+	# Lav korrekt navn, eks:
+	sed -i "s/${HPVName}REF/$BaseN/g" ${f%gb}gff3
+
+	# Fjern .t00:
+	sed -i 's/.t00//g' ${f%gb}gff3
+
+	# Fjern "_" fra gennavne for at annotation R script ikke kommer til at separere forkert. Der må gerne være "-"" i gennavne, men ikke i referencenavne
+
+	# Sætert CDS phases til 0. De må ikke være "."
+	# 1 tallet gør at den redigerer i det valgte, men også returnerer resten som ikke er redigeret
+	awk '$3=="CDS" {print $8="0"} 1' OFS="\t" ${f%gb}gff3 > tmp.gff && mv tmp.gff ${f%gb}gff3
+	# Fjerner enkelte linjer der opstår hvor der kun står "0"
+	grep -v "^0" ${f%gb}gff3 > tmp.gff && mv tmp.gff ${f%gb}gff3
+	# Fjerner nukleotid sekvens + dens header
+	cat ${f%gb}gff3 | sed -n '/[>]/q;p' > tmp.txt 	# This says "when you reach the line that matches the pattern quit, otherwise print each line". The -n option prevents implicit printing and the p command is required to explicitly print lines.
+
+	# Flytter klar fil til anden mappe
+	mv tmp.txt $FilePath/Revised_GFF3_files_rdy/${BaseN}.gff3
 
 
-
-#### GAMMELT
-
-## NOTE: Der er 1 sted der skal udføres manuelt. Der står hvor det er.
-#
-## Get all sublineages of a HPV supertype from text table
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#File=$FilePath/PaVE_HPV_all_main.txt
-#HPVlist="16 18 31 33 35 39 45 51 52 56 58 59 68 26 53 66 67 70 73 82 30 34 69 85 97 6 11"
-#
-#
-#for number in $HPVlist; do
-#	GETHPVType=$(echo HPV${number})
-#	grep -P "${GETHPVType}\t" $File > $FilePath/All_important_HPV_Main/${GETHPVType}.txt
-#done
-#
-#
-#
-#
-## Remove all spaces
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#
-#for number in $HPVlist; do
-#	GETHPVType=$(echo HPV${number})
-#	File=$FilePath/All_important_HPV_Main/${GETHPVType}.txt
-#	sed 's/ \+//g' $File > $FilePath/All_important_HPV_Main_nospace/${GETHPVType}.txt
-#done
-#
-#
-#
-#
-#
-## Rearrange tabs
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#
-#for number in $HPVlist; do
-#	GETHPVType=$(echo HPV${number})
-#	File=$FilePath/All_important_HPV_Main_nospace/${GETHPVType}.txt
-#	awk -F'\t' -v OFS="\t" '{ print $2, $1, $3, $5, $4, $6 }' $File > $FilePath/All_important_HPV_Main_fixed/${GETHPVType}.txt
-#done
-#
-#
-#
-#
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#
-## Sætter mainline øverst
-#for file in $FilePath/All_important_HPV_Main_fixed/*.txt; do
-#	cFile=$file
-#	cHPV=${cFile##*/}
-#	#echo $cHPV
-#	cat $file $FilePath/All_important_HPV_Sub/${cHPV} > temp && mv temp $FilePath/All_important_HPV_MainAndSub/${cHPV}
-#done
-#
-#
-#
-#
-## Finder hvor mange der har revised
-#for file in $FilePath/All_important_HPV_Main_fixed/*.txt; do
-#	cFile=$file
-#	cHPV=${cFile##*/}
-#	grep "Revised" $FilePath/All_important_HPV_MainAndSub_revised/${cHPV}
-#done
-#
-#
-#
-#
-#
-#
-## Indsæt de funde referencer manuelt og fjern dem de erstatter
-#
-#
-#
-## Multiple sequence alignment og variant calling på hver supertype med undertyper
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#MainF=/home/pato/Skrivebord/HPV16_projekt
-## Gør ovenstående med ny navngivning (V5)
-#
-#for file in $FilePath/All_important_HPV_MainAndSub/*.txt; do
-#
-#	#####TEST
-#	#file=$FilePath/All_important_HPV_MainAndSub_revised/HPV16.txt
-#
-#	cFile=$file
-#	cHPV=${cFile##*/}
-#	# Samler alle fasta filer til en fil til mafft
-#	ListeMedIDs=$(cut -f5 $file)
-#	#echo $ListeMedIDs
-#	# Finder subtype IDs som er under HPV overtype
-#	
-#	rm ID_list.txt
-#	for ID in $ListeMedIDs; do
-#	echo $ID >> ID_list.txt
-#	done
-#
-#	IDs=$(< ID_list.txt)
-#
-#	touch Empty.fasta
-#	
-#	NewFasta=Empty.fasta
-#	#Finder fasta fra GenBankID
-#	for f in $IDs; do
-#	cat $NewFasta $FilePath/V5_ALL_main_and_sub_revisedINS_rdy/*${f}*.fasta >> tempfasta.fasta
-#	mv tempfasta.fasta tempfasta1.fasta
-#	NewFasta=tempfasta1.fasta
-#	done
-#	mv $NewFasta $FilePath/Samlet_fasta_ny/${cHPV}.fasta
-#
-#	#$FilePath/V5_ALL_main_and_sub_revisedINS_rdy/${cHPV%txt}fasta 
-#
-#	#TEST
-#	# cat har allerede fundet korrekte filer gennem * 
-#	# Begynder at finde faktisk navn på mainstrain e.g om de ender på .1 .2 eller uden nogen af dem, så det kan benyttes til chrname
-#	# Henter første ID, som er main strain:
-#	MainStrain=$(awk 'sub(/^>/, "")' $FilePath/Samlet_fasta_ny/${cHPV}.fasta)
-#	arr=($MainStrain)
-#	ChrName=${arr[0]}
-#
-#	# Aligner med mafft
-#	#mafft-linsi $FilePath/Samlet_fasta_ny/${cHPV}.fasta  > $FilePath/MSA/${cHPV%txt}mafft
-#	# Kalder varianter med snp-sites
-#	#snp-sites -v -o $FilePath/SNPs/${cHPV%txt}vcf $FilePath/MSA/${cHPV%txt}mafft
-#	
-#	MainF=/home/pato/Skrivebord/HPV16_projekt
-#	Rscriptfolder=$MainF/Scripts/R
-#	mafftFile=$FilePath/MSA/${cHPV%txt}mafft
-#	mafftName=${mafftFile##*/}
-#	# Korrigerer
-#	Rscript $Rscriptfolder/Correct_MSA_vcf_File_to_main_strain_bash.R $FilePath $mafftName ${mafftName%mafft}vcf $ChrName
-#
-#	CorrVCF=$FilePath/SNPs_corr/corr_${cHPV%txt}vcf
-#
-#	# Omsætter til bed fil
-#	grep -v "#" $CorrVCF | awk '{print $1, $2, $2 + 1}' >  $FilePath/SNPs_as_bed/${cHPV%txt}bed
-#
-#	echo Færdig med MSA: $ListeMedIDs
-#
-#done
-#
-## Fjerner duplicate referencer, de kan være opstået fordi der er nogen maintyper i tabel med undertypevarianter
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types/MSA
-#
-#for f in $FilePath/*.mafft; do
-#	awk '/^>/{f=!d[$1];d[$1]=1}f' $f > ${f}.tmp
-#	mv ${f}.tmp $f
-#done
-#
-#
-#
-#rm Empty.fasta
-#rm ID_list.txt
+done
 
 
+# Finder hvilke gff3 filer fra NCBI der mangler gene rækker (nogle har kun rækker for CDS)
+FilePath=/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles
+for f in $FilePath/*.gff3; do 
+
+	MustBeFixed=$(awk '{print $3}' $f | grep "gene")
+
+	BaseName=${f##*/}
+
+	if [ ${#MustBeFixed} -lt 1 ]; then
+
+	echo $BaseName must be updated with genes
+
+	fi
+
+done
 
 
+# Kopierer manuelt gb filer ned fra PaVE og benytter til følgende
 
 
+# For genbank filer der skal laves om til gff3 filer
+FilePath=/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles
+for f in $FilePath/gbFilesToUpdateGff3/*.gb; do
 
+	bp_genbank2gff $f --viral --stdout > ${f%gb}gff3 
 
+	BaseName=${f##*/}
+	BaseName=${BaseName%.gb}
 
+	# Ændrer chr navn i fil fra NCBIs standard HPV[0-9]*REF, eg: HPV16REF til format som filerne er navngivet i
+	sed -i "s/HPV[0-9]*REF/$BaseName/g" ${f%gb}gff3
 
+	# Fjern .t00:
+	sed -i 's/.t00//g' ${f%gb}gff3
 
+	# Sætert CDS phases til 0. De må ikke være "."
+	# 1 tallet gør at den redigerer i det valgte, men også returnerer resten som ikke er redigeret
+	awk '$3=="CDS" {print $8="0"} 1' OFS="\t" ${f%gb}gff3 > tmp.gff && mv tmp.gff ${f%gb}gff3
+	# Fjerner enkelte linjer der opstår hvor der kun står "0"
+	grep -v "^0" ${f%gb}gff3 > tmp.gff && mv tmp.gff ${f%gb}gff3
+	# Fjerner nukleotid sekvens + dens header
+	cat ${f%gb}gff3 | sed -n '/[>]/q;p' > tmp.txt 	# This says "when you reach the line that matches the pattern quit, otherwise print each line". The -n option prevents implicit printing and the p command is required to explicitly print lines.
+	mv tmp.txt ${f%gb}gff3
 
-
-
-
-# GAMMELT
-
-#FilePath=/home/pato/Skrivebord/HPV16_projekt/References/0Andre/HPV_all_types
-#
-## Multiple sequence alignment og variant calling på hver supertype med undertyper
-#for file in $FilePath/All_important_HPV_MainAndSub_revised/*.txt; do
-#
-#	#####TEST
-#	#file=$FilePath/All_important_HPV_MainAndSub_revised/HPV16.txt
-#
-#
-#	cFile=$file
-#	cHPV=${cFile##*/}
-#	# Samler alle fasta filer til en fil til mafft
-#	ListeMedIDs=$(cut -f5 $file)
-#	#echo $ListeMedIDs
-#	# Finder filer
-#	rm address_list.txt
-#	for ID in $ListeMedIDs; do
-#	echo $FilePath/MainAndSub_merge_revisedInserted/$ID >> address_list.txt
-#	done
-#
-#	adresses=$(< address_list.txt)
-#
-#	rm address_list_fix.txt
-#
-#	for element in $adresses; do
-#	echo "$element"\*.fasta >> address_list_fix.txt # Tilføjer stjerne og suffix
-#	done
-#
-#	# Samler fasta filer til 1 fasta
-#	address_list_fix=$(< address_list_fix.txt)
-#
-#	cat $address_list_fix > $FilePath/Samlet_fasta/${cHPV%txt}fasta 
-#
-#	# cat har allerede fundet korrekte filer gennem * 
-#	# Begynder at finde faktisk navn på mainstrain e.g om de ender på .1 .2 eller uden nogen af dem, så det kan benyttes til chrname
-#
-#	MainStrain=($address_list_fix) # Gemmer mainstrain navn, virker da den kun tager første instans
-#	RefBaseName=${MainStrain##*/} 
-#	ChrName=${RefBaseName%.fasta}
-#
-#
-#	# Aligner med mafft
-#	mafft-linsi $FilePath/Samlet_fasta/${cHPV%txt}fasta  > $FilePath/MSA/${cHPV%txt}mafft
-#	# Kalder varianter med snp-sites
-#	snp-sites -v -o $FilePath/SNPs/${cHPV%txt}vcf $FilePath/MSA/${cHPV%txt}mafft
-#	
-#	MainF=/home/pato/Skrivebord/HPV16_projekt
-#	Rscriptfolder=$MainF/Scripts/R
-#	mafftFile=$FilePath/MSA/${cHPV%txt}mafft
-#	mafftName=${mafftFile##*/}
-#	# Korrigerer
-#	Rscript $Rscriptfolder/Correct_MSA_vcf_File_to_main_strain_bash.R $FilePath $mafftName ${mafftName%mafft}vcf $ChrName
-#
-#	CorrVCF=$FilePath/SNPs_corr/corr_${cHPV%txt}vcf
-#
-#	# Omsætter til bed fil
-#	grep -v "#" $CorrVCF | awk '{print $1, $2, $2 + 1}' >  $FilePath/SNPs_as_bed/${cHPV%txt}bed
-#
-#done
-#rm address_list.txt
-#rm address_list_fix.txt
+done

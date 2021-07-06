@@ -16,7 +16,7 @@ library(dplyr)
 ####TEST 
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "Karoline_92fastq_1359_05072021"
+# SuperRunName <- "Karoline_92fastq_6revisedRefs_1416_02072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 ######
 
@@ -40,9 +40,9 @@ cbind.fill <- function(...){
   do.call(cbind, lapply(nm, function (x) 
   rbind(x, matrix(,n-nrow(x), ncol(x))))) 
 }
-
 GFFFolder <- paste("/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles/", sep="")
 
+# LIG MÆRKE TIL ADVARSELSBESKEDER
 newdf <- data.frame()
 newdf_nuc <- data.frame()
 newdf_nuc_coord <- data.frame()
@@ -52,13 +52,13 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-  # Fastqname <- "pt_130.IonXpress_006"
+  #Fastqname <- "Pt_79_RNA.IonXpress_092"
   #Fastqname <- "pt_45.IonXpress_067"
   #####
   
   Runname <- paste(Fastqname,"_run",sep="")
   # Finder hvilke referencer fastq filer er blevet alignet til 
-  RevReferences <- read.table(paste(MainF,"/", "VirStrain_run/", SuperRunName,"/", Runname,"/","SubtypeCall.txt", sep = ""))
+  RevReferences <- read.table(paste(MainF,"/", "VirStrain_run/", SuperRunName,"/", Runname,"/","Revised_SubTypeCalls.txt", sep = ""))
   # Hopper til næste iteration (næste fastqfil) hvis ingen subtypecalls
   # if("try-error" %in% class(RevReferences)){
   #   novcfcounter <- novcfcounter + 1
@@ -73,106 +73,92 @@ for(Fastqname in MultiFastqList){
   # Måske mere relevant og eneste måde at fortsætte til nocalls script ligenu
   # er i stedet at tvinge en reference på alle fastqfiler. Sådan at eks. alle bliver tjekket imod K02718.1
   
-  for(RRef in 1:nrow(RevReferences)){
-    
-    #
+  for(RRef in 1:length(RevReferences)){
+
     ##TEST
+    #RRef <- 1
     #Refname <- "K02718.1_revised"
     ######
-    #TEST
-    #RRef <- 18
-    CallPrio <- which(RevReferences %in% RevReferences[RRef,]) # Gør at det kan ses hvilken rang referencen har fra VirStrain, eller den givne referenceliste
+    
+    CallPrio <- which(RevReferences %in% RevReferences[RRef]) # Gør at det kan ses hvilken rang referencen har fra VirStrain
     counter <- counter + 1 # Tæller for at holde styr på hvor langt script er nået  
-    Refname <- RevReferences[RRef,]
+    Refname <- RevReferences[RRef]
     
+    # Tester om reference er i givne referencer som er fundet fra Ion torrent coverage analyse:
+    Depth_calls <- read.table(paste(MainF,"/FASTQ/Karoline_coverage_genotyping/",Fastqname,".txt", sep =""))
+    if(grepl(Refname, Depth_calls) == TRUE){
     
-    vcfname <- paste(Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
-    gffname <- paste(Refname,".gff3", sep ="")
-    
-    gfffile <- paste(GFFFolder, gffname, sep ="")
-    
-    Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
-
-    
-    Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
-    faf <- open(FaFile(Ref))
-    Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/", sep="")
-    # Error check for om der er en filtreret vcf fil tilgængelig
-    vcffile <- paste(Folder, vcfname, sep ="")
-    
-    c_vcf <- try(readVcf(vcffile)) # læser som collapsed vcf
-    if("try-error" %in% class(c_vcf)){
-      novcfcounter <- novcfcounter + 1
-      next
-    }
-    
-    # Error check som fortsætter til næste iteration i loopet hvis der ingen varianter i vcf fil er
-    options(warn=2)
-    no_elem <- try(predictCoding(c_vcf, Gene_anno, seqSource = faf))
-    if("try-error" %in% class(no_elem)){
-      noelement <- noelement + 1
-      AnnoRdy <- data.frame(matrix(ncol = 1, nrow = 1))
-      colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = "_")
-      newdf <- cbind.fill(newdf, AnnoRdy)
-      next
-    }
-    options(warn=1)  
-    
-    vcf_anno <- predictCoding(c_vcf, Gene_anno, seqSource = faf)
-    Nuc_start <- vcf_anno@ranges@start # Collecting nuc position
-    vcf_anno_df_2 <- vcf_anno@elementMetadata # Collecting elementdata
-    vcf_anno_df <- cbind(Nuc_start, vcf_anno_df_2)
-    
-    anno_df <- as.data.frame(vcf_anno_df)
-    #anno_df[anno_df==""]
-    
-    # Formatting protein changes
-    AAchange <- try(anno_df[c("REFAA","PROTEINLOC", "VARAA","GENEID")]) # "REFAA","PROTEIONLOC","VARAA")
-    if("try-error" %in% class(AAchange)){
-      print(paste("No gene info in gff3 file",Refname))
-      rdyAA <- as.data.frame(paste("NoGeneInfoIn",Refname, sep = "_"), col.names = aa)
-      rdyNuc <- as.data.frame(paste("NoGeneInfoIn",Refname, sep = "_"))
+      vcfname <- paste(Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+      gffname <- paste(Refname,".gff3", sep ="")
+      
+      gfffile <- paste(GFFFolder, gffname, sep ="")
+      Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
+      
+      Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
+      faf <- open(FaFile(Ref))
+      Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/", sep="")
+      # Error check for om der er en filtreret vcf fil tilgængelig
+      vcffile <- paste(Folder, vcfname, sep ="")
+      
+      c_vcf <- try(readVcf(vcffile)) # læser som collapsed vcf
+      if("try-error" %in% class(c_vcf)){
+        novcfcounter <- novcfcounter + 1
+        next
+      }
+      
+      # Error check som fortsætter til næste iteration i loopet hvis der ingen varianter i vcf fil er
+      options(warn=2)
+      no_elem <- try(predictCoding(c_vcf, Gene_anno, seqSource = faf))
+      if("try-error" %in% class(no_elem)){
+        noelement <- noelement + 1
+        AnnoRdy <- data.frame(matrix(ncol = 1, nrow = 1))
+        colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = "_")
+        newdf <- cbind.fill(newdf, AnnoRdy)
+        next
+      }
+      options(warn=1)  
+      
+      vcf_anno <- predictCoding(c_vcf, Gene_anno, seqSource = faf)
+      Nuc_start <- vcf_anno@ranges@start # Collecting nuc position
+      vcf_anno_df_2 <- vcf_anno@elementMetadata # Collecting elementdata
+      vcf_anno_df <- cbind(Nuc_start, vcf_anno_df_2)
+      
+      anno_df <- as.data.frame(vcf_anno_df)
+      #anno_df[anno_df==""]
+      
+      # Formatting protein changes
+      AAchange <- anno_df[c("REFAA","PROTEINLOC", "VARAA","GENEID")] # "REFAA","PROTEIONLOC","VARAA"
+      AA <- cbind(p = "p.", AAchange)
+      rdyAA <- as.data.frame(paste(AA$p, AA$REFAA, AA$PROTEINLOC, AA$VARAA,"_", AA$GENEID, sep = ""), col.names = aa)
+      
+      # Formatting nucleotide changes
+      Nuchange <- vcf_anno_df[c("Nuc_start","REF", "ALT")] # "REFAA","PROTEIONLOC","VARAA"
+      Nuc <- cbind(Nuchange, a = ">")
+      #Nuc <- cbind(c = "c.", Nuc)
+      Nuc <- cbind(sepera = ",", Nuc)
+      rdyNuc <- as.data.frame(paste(Nuc$Nuc_start,Nuc$sepera, Nuc$REF, Nuc$a, Nuc$ALT@unlistData, sep = ""))
       colnames(rdyNuc) <- "Mutation"
       rm(AnnoRdy) 
       #Merger AA og nuc info til 1 kolonne
       AnnoRdy <- data.frame(matrix(ncol = 1, nrow = nrow(rdyAA)))
       for(j in 1:nrow(rdyAA)){
-        AnnoRdy[j,] <- paste("NoGeneInfoIn",Refname, sep = "") 
+        AnnoRdy[j,] <- paste(rdyNuc[j,],rdyAA[j,],Refname,sep = "%") 
       }
-      colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = "_")
+      
+      colnames(AnnoRdy) <- paste(Fastqname,sep = "_")
+      
       newdf <- cbind.fill(newdf, AnnoRdy)
-      next
+  
+      #newdf_nuc <- cbind.fill(newdf_nuc, rdyNuc)
+      
+      #newdf_nuc_coord <- cbind.fill(newdf_nuc_coord,Nuc$Nuc_start)
+      
+      # Conveniece for tracking progress
+      print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
     }
-    AA <- cbind(p = "p.", AAchange)
-    rdyAA <- as.data.frame(paste(AA$p, AA$REFAA, AA$PROTEINLOC, AA$VARAA,"_", AA$GENEID, sep = ""), col.names = aa)
-    
-    # Formatting nucleotide changes
-    Nuchange <- vcf_anno_df[c("Nuc_start","REF", "ALT")] # "REFAA","PROTEIONLOC","VARAA"
-    Nuc <- cbind(Nuchange, a = ">")
-    #Nuc <- cbind(c = "c.", Nuc)
-    Nuc <- cbind(sepera = ",", Nuc)
-    rdyNuc <- as.data.frame(paste(Nuc$Nuc_start,Nuc$sepera, Nuc$REF, Nuc$a, Nuc$ALT@unlistData, sep = ""))
-    colnames(rdyNuc) <- "Mutation"
-    rm(AnnoRdy) 
-    #Merger AA og nuc info til 1 kolonne
-    AnnoRdy <- data.frame(matrix(ncol = 1, nrow = nrow(rdyAA)))
-    for(j in 1:nrow(rdyAA)){
-      AnnoRdy[j,] <- paste(rdyNuc[j,],rdyAA[j,],Refname,sep = "%") 
-    }
-    
-    colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = "_")
-    
-    newdf <- cbind.fill(newdf, AnnoRdy)
-
-    #newdf_nuc <- cbind.fill(newdf_nuc, rdyNuc)
-    
-    #newdf_nuc_coord <- cbind.fill(newdf_nuc_coord,Nuc$Nuc_start)
-    
-
   }
   
-  # Conveniece for tracking progress
-  print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
+  print("Job's done!")
   print(paste("Number of vcf files with no variants: ", noelement))
   print(paste("Number of vcf files corrupt or missing: ", novcfcounter))
   
@@ -224,9 +210,8 @@ for(c in 1:ncol(RdyDF)){
   }
 }
 
-# Fjerner tomme kolonner
-RdyDF <- RdyDF[, colSums(RdyDF != "") != 0] 
 
 write.table(RdyDF, file = paste(SaveDir, "/", "Annotations_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+
 
 

@@ -14,13 +14,18 @@ AmpliconRef=K02718.1 # Den reference som ampliconpanel er lavet ud fra. Muliggø
 BedFileNameX=IAD209923_226_Designed_compl # Bruges til at cutte primer sekvenser væk
 ####################################
 
+
+
 ########## Scripts to use ##########
 indexReferences=false
 cutOutsideAmplicons=false # Risk of loosing data if HPV is other type than the one used in ampliconpanel
+qualityFilt=true # Skal ligenu være true, ellers skal fastqfiler gives endelsen "_filt.fastq" for at senere moduler kan finde dem
 RunAnnoRSCript=true
 RunSiteCovScript=true
 RunNoCallsScript=true
 ####################################
+
+
 
 Date=$(date +"%H%M_%d%m%Y")
 SuperRunName=$(echo ${Name}_${Date})
@@ -44,6 +49,8 @@ find $FastQF/ -maxdepth 1  -name '*.fastq' | sed 's/^.*FASTQ.//' | sed 's/.fastq
 FastqList=$(< $MainF/FASTQfiles_${SuperRunName}.txt) # Henter liste og gemmer som variabel
 FastqRunList=$(< $MainF/FASTQfiles_${SuperRunName}_runnames.txt)
 
+
+
 ########################## Primer sekvens cut #########################
 if [ $cutOutsideAmplicons = true ]; then
 	
@@ -59,7 +66,29 @@ if [ $cutOutsideAmplicons = true ]; then
 fi
 
 
-############################# FASTQ FILTRERING, MAIN GENOTYPING & SUBTYPING ###############################
+
+############################# FASTQ FILTRERING ###############################
+if [ $qualityFilt = true ]; then
+
+START=1
+END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+	for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+	FastqInputAddr=$SeqF/${FastqInput}.fastq
+	cutadapt -q $QualTrim -m $MinLen -M $MaxLen ${FastqInputAddr} -o ${FastqInputAddr%.fastq}_filt.fastq
+	
+	done
+
+fi
+# Dette navngiver filer med endelsen "_filt.fastq", hvilket er et krav for at resten af workflowet kan finde fastq filerne
+##############################################################################
+
+
+
+
+############################# MAIN GENOTYPING & SUBTYPING ###############################
 # Finder ligenu top 3 most possible strains
 conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
 
@@ -70,7 +99,7 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ ))
 do
 	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
-	VirStrain_genotyping.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainMaindb $QualTrim $MinLen $MaxLen
+	VirStrain_genotyping.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainMaindb
 	echo $linenumber of $END
 done
 
@@ -107,8 +136,6 @@ conda deactivate
 
 
 
-
-
 ####### REFERENCE INDEXERING TIL ALIGNMENT OG VARIANTCALLING ##########
 # Putter hver reference i en undermappe for sig, så de er klar til kørsel
 # genererer også dict fil og samtools faidx fil til HaplotypeCaller
@@ -137,8 +164,10 @@ fi
 ########################################################################
 
 
+
 ############## REVUDERING AF SUBTYPECALL, ALIGNMENT & VARIANT CALLING ##########################
-# Bruger _filt.fastq filer fra subtyping
+# Bruger _filt.fastq filer fra filtrering og SubtypeCall.txt fra subtypering. Selv hvis der ikke ønskes subtypering (så som hvis det er genotyperingspanel)
+# der køres på, skal subtypering køres igennem for at lave disse filer. Derefter kan der manuelt vælges bestemte referencer inde i AlignAndVariantCall.sh scriptet.
 # Laver 1 fil med alle referencer til No_call_script
 find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
 sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt

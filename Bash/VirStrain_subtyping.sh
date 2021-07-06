@@ -10,9 +10,6 @@ FastQFile=$2 #input uden extenstion
 SuperRunName=$3
 MainF=$4
 VirStrain_customdb=$5
-QualTrim=$6
-cutadaptMinsize=$7
-cutadaptMaxsize=$8
 
 #RunName=Pt_11_DNA.IonXpress_085_run
 #FastQFile=Pt_11_DNA.IonXpress_085 #input uden extenstion
@@ -24,9 +21,6 @@ FQin=$MainF/FASTQ/${FastQFile}.fastq
 SuperRunOut=$MainF/VirStrain_run/$SuperRunName
 Resultsout=$SuperRunOut/$RunName
 VirStrain_db=$VirStrain_customdb
-
-# Kvalitetssikrer
-cutadapt -q $QualTrim -m $cutadaptMinsize -M $cutadaptMaxsize $FQin -o ${FQin%.fastq}_filt.fastq
 
 FQin=${FQin%.fastq}_filt.fastq
 
