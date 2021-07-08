@@ -1,0 +1,75 @@
+# Put alle fastq filer i mappen FASTQ (ikke i nogen af undermapperne)
+# Sæt følgende variabler i linjer der ikke starter med "#"
+# Forklaring:
+# Name er et navn man kan give hele kørslen. Kørslen kommer til at hedde navn_klokkeslæt_dato
+# MainF er hovedmappen, hvorfa alt køres og alle undermapper ligger
+# Qualtrim er en kvalitetsscore som cutadapt programmet vil bruge til at fjerne baser fra 3' enden af reads, 
+# hvis de har en score under den angivne værdi
+# MinLen er min. længde reads skal være, ellers bliver de filtreret fra
+# MaxLen er max. længde reads skal være, ellers bliver de filtreret fra
+# AmpliconRef er den reference amplicons er lavet ud fra og bruges til at kunne klippe regioner af reads 
+# udenfor amplicon væk
+# BedFileNameX er navn på hypotetisk bedfil med komplimentære regioner til at cutte primer sekvenser 
+# væk fra amplicons. Der skal ligges en fil med endelsen <compl1> og en med endelsen <compl2> der udgør 
+# hver amplicon primer pool. 
+# De to sidstenævnte variabler bliver ikke brugt medmindre der er alignet til den eksakte ampliconreference
+
+# De fundne genotyper for hver fastqfil skal angives filen /References/InputRefs/<fastqnavn>.txt, 
+# medmindre VirStrain calling er aktiveret. Hver type skal stå på en linje for sig. Undgå mellemrum på endelser.
+# Disse filer bliver selv modificeret hvis VirStrain calling er aktiveret, så pas på med at gemme vigtig info her
+
+Name=Karoline_run_covGenTest
+MainF=/home/pato/Skrivebord/HPV16_projekt
+QualTrim=20
+MinLen=50
+MaxLen=320
+AmpliconRef=K02718.1
+BedFileNameX=IAD209923_226_Designed_compl
+
+customName=true # Hvis true, ignoreres Name og cName bruges i stedet, hvor der ikke sættes dato på. Meningen at det skal bruges 
+# til at køre specifikke moduler på en evt ældre kørsel, der allerede har et navn med klokkeslet
+cName=Karoline_run_covGenTest_1207_08072021
+indexReferences=false
+cutOutsideAmplicons=false # Kan risiskere at miste data hvis HPV er andre typer end den brugt til at lave ampliconpanel
+qualityFilt=true
+CombineRefs=false
+AlignAndVarCall=true
+SplitAndVarCall=false
+RunAnnoRSCript=false
+RunSiteCovScript=false
+RunNoCallsScript=false
+
+VirStrainGenoAndSubTyping=true # Se nedenstående info
+VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
+VirStrainSubFolders=VirStrainDBs_HPV_sub
+
+# VIGTIGT OM VIRSTRAIN CALLING:
+# Hvis virstrain skal finde hovedtype og subtype, bør følgende sættes
+# CombineRefs=false
+# SplitAndVarCall=false
+
+# Der må ikke være mellemrum eller tab i nogen variabler, heller ikke på enden af dem
+# Når ovenstående parametre er valgt, gem denne fil (ctrl+s), åbn terminal (ctrl+alt+t) og kør program ved at skrive:
+AAChangeKnownGeno.sh 
+
+# Resultater:
+# Slutresultat ligger i mappen /AnnotationFrequency_FASTQfiles_<Name>_<time>_<date>_AllResults.txt
+# Der ligger flere andre tekst filer med forskellig info i med <Name> i navnet
+# Resulterende bamfiler og vcf filer ligger i Results/<Name>/<fastqnavn>/<reference>
+# En summerende fil for antal varianter fundet i en fastqfil ligger i
+# Results/<Name>/<fastqnavn>/MismatchCounts_filt_<fastqnan>_run, hvor første kolonne er referencenavn og anden kolonne er antal
+# fundne mismatch
+# Bam filer med endelsen ".sort.bam" har ikke fået markeret duplikat reads
+# Bam filer med endelsen ".sort.dup.readGroupFix.bam" har fået fjernet duplikat reads
+# vcf filer med endelse ".sort.dup.readGroupFix_filtered.vcf" har fået filtreret variant calls, men indeholder dem stadig, 
+# så man kan se hvorfor de er blevet filtreret.
+# vcf filer med endelse ".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf" har fået fjernet filtrerede variant calls
+# Hvis VirStrain subtypering er aktiveret ligger resultater i VirStrain/<Name> undermapper
+# Der kan også ses resultater for hver enkelt kald i GenotypeCalls/{fastqnavn} mappen.
+
+
+
+
+
+
+
