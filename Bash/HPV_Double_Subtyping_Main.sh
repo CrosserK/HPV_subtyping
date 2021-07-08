@@ -179,7 +179,6 @@ do
 	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
 	VirSupOut=$MainF/VirStrain_run/$SuperRunName
-	RunName=${FastqInput}_run
 	VirRunOut_run=$VirSupOut/$RunName
 	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirRunOut_run $BedFileNameX $AmpliconRef
 	echo fil $FastqInput færdig... $linenumber of $END

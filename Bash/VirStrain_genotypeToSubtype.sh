@@ -47,7 +47,13 @@ if [[ -d $VirStrain_db ]]; then
 
 	echo -e $FastQFile '\t' $(grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")') >> $SuperRunOut/VirStrain_summary.txt
 
+	# Gemmer bedste strain til downstream scripts
+	grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+
 else
 	echo $FoundMainType > $Resultsout/SubtypeCall.txt
 	echo "(No subtype references)" >> $Resultsout/SubtypeCall.txt
+
+	# Gemmer bedste strain til downstream scripts
+	"$FoundMainType" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
 fi

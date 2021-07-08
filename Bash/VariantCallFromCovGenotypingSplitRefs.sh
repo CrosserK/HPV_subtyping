@@ -20,8 +20,8 @@ AmpliconRef=$7
 customRef=false
 
 # TEST
-#RunName=pt_138.IonXpress_007_run
-#FastQFile=pt_138.IonXpress_007 #input uden extenstion
+#RunName=pt_130.IonXpress_006_run
+#FastQFile=pt_130.IonXpress_006 #input uden extenstion
 #SuperRunFolder=Karoline_run_covGenTest_0859_07072021
 #MainF=/home/pato/Skrivebord/HPV16_projekt
 #GenotypeCalls=/home/pato/Skrivebord/HPV16_projekt/GenotypeCalls/"${SuperRunFolder}"
@@ -48,12 +48,12 @@ DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/Referenc
 ###################### Find genotypecall ref ##########################
 
 # HER DEFINERES REFERENCE FUNDET AF KOMBINEREDE REFERENCER MODUL
-RefList=$(< $GenotypeCalls/$FastQFile.txt) 
+RefList=$(< $GenotypeCalls/${FastQFile}_SplitTo.txt) 
 # RefList=$(< $SeqF/SuperRunName/SubtypeCallFromCov.txt) # Uncomment hvis der skal bruges custom referencer fra customRefGenerator.sh
 # RefList="HPV6_X00203_1_revised	HPV18_X05015_1_revised	HPV53_X74482_1_revised	HPV56_X74483_1_revised	HPV59_X77858_1_revised	HPV82_AB027021_1_revised" # Uncomment, hvis revised fil skal bruges som refliste
 # Hvis der vælges flere kan de skrives på format (tab separeret)
 
-echo -e Bruger "$RefList" til $FastQFile
+echo -e Bruger:"\n""$RefList""\n"til $FastQFile
 
 ######################################################################################
 
@@ -73,18 +73,14 @@ for refType in $RefList; do
 
 	####TEST
 	#refType=K02718.1_revised
-	# Laver mappe til hver alignment og aligner og markerer duplicater og indexerer
-	mkdir -p $workD/"$refType"
 	currentF=$workD/"$refType"
 	mkdir -p "$currentF"/ResultFiles
 	Ref_FASTA=$RefF/IndexedRef/"${refType}"/"${refType}".fasta # Find reference for picard
 	echo Reference er nu "${Ref_FASTA##*/}"
-	BamFile=$currentF/"${refType}".bam
-	# Aligner
-	bwa mem -t 12 -v 2 "$Ref_FASTA" $SeqF/"${FastQFile}"_filt.fastq > "${BamFile%bam}"sam # -v = verbosity, 2 for errors og warnings kun
-
+	BamFile=$currentF/${FastQFile}_BamSplitFile_"${refType}".bam
+		
 	# Sort bamfile
-	samtools sort "${BamFile%bam}"sam -o "${BamFile%bam}"sort.bam 
+	samtools sort "${BamFile}" -o "${BamFile%bam}"sort.bam 
 
 	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup.bam \
 	-M $currentF/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_"${refType}".txt
@@ -288,8 +284,8 @@ for refType in $RefList; do
 	# echo cp $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
 	# echo cp ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
 	# echo cp ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
-	mv $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
-	mv $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
+	mv $BamOut $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
+	mv ${BamOut}.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
 	mv ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
 	mv ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
 	rm ${VarFile%.vcf}_FiltEx.vcf; 

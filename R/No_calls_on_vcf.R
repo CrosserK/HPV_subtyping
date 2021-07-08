@@ -8,9 +8,9 @@ library(dplyr)
 ##TEST
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "HPVSubtyping_22fastq_28_6_2021"
+# SuperRunName <- "Karoline_run_covGenTest_0859_07072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
-# ####
+#####
 
 MainF <- as.character(commandArgs(TRUE)[1])
 SaveDir <- as.character(commandArgs(TRUE)[2])
@@ -18,18 +18,18 @@ SuperRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
 
 # Finder hver reference der er lavet data på skal der nu tjekkes om fastqfiler som er blevet alignet til reference også har dækning på position med snv
-Refs <- list.files(path = SaveDir, pattern = paste("Annotations_FASTQfiles_", SuperRunName, sep =""))
-Refs <- str_remove(Refs, paste("Annotations_FASTQfiles_", SuperRunName, sep =""))
-Refs <- str_remove(Refs, ".txt")
+Refs <- list.files(path = SaveDir, pattern = paste("FASTQfiles_", SuperRunName, "_Nuc_change_coords_", sep =""))
+Refs <- str_remove(Refs, paste("FASTQfiles_", SuperRunName, "_Nuc_change_coords_", sep =""))
+Refs <- str_remove(Refs, ".bed")
 # Har nu cuttet ned til referencer
-
+# Loader ForNoCallScript fil
+NoCalls <- read.table(paste(SaveDir,"/","ForNoCallScript_",MultiFQfile,"_Nuc_change_coords.txt", sep = ""), header = T)
 # Laver nu no calls til hver reference
 for(Refname in Refs){
   
   #TEST
   #Refname <- "K02718.1_revised"
-  
-  Fredf <- read.table(paste(SaveDir,"/","ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""), header = T)
+  Fredf <- NoCalls[NoCalls$Reference == Refname,]
   
   MultiFastqListFile <- paste(MainF,"/", MultiFQfile, ".txt", sep = "")
   MultiFastqList <- read.table(MultiFastqListFile)
@@ -45,14 +45,23 @@ for(Refname in Refs){
   nocalldf <- data.frame()
   FreqDF <- cbind(FreqDF, No_Calls = 0)
   FreqDF$No_Calls <- as.integer(FreqDF$No_Calls)
+  
   for(Fastqname in MultiFastqList){
     
     #TEST
-    #Fastqname <- "Pt_36.IonXpress_088"
+    #Fastqname <- "pt_130.IonXpress_006"
     #####
    
+    # Tjekker om fastqfil er blevet alignet til nuværende reference:
+    if(file.exists(paste(MainF,"/Results/",SuperRunName,"/", Fastqname,"/",Refname,"/ResultFiles/SNP_cov.txt", sep="")) == FALSE){
+      next
+    } else {
+      print("yes")
+    }
+    
     Runname <- paste(Fastqname,"_run",sep="")
-    Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/ResultFiles/", sep="")
+    Folder <- paste(MainF,"/Results/",SuperRunName,"/", Fastqname,"/",Refname,"/ResultFiles/", sep="")
+
     
     # Hopper til næste iteration i loop, hvis ingen SNP_cov fil (Da der så ikke er blevet alignet til nuværende reference med nuværende fastqfil)
     SNP_cov_File <- try(read.table(paste(Folder,"SNP_cov.txt", sep ="")))
