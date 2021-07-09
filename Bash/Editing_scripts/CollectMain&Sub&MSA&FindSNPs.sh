@@ -13,7 +13,7 @@ File=$FilePath/Pave_MainLines_compact.txt
 
 
 
-# Ændrer fasta "_" til "."
+# Ændrer fasta "." til "_"
 for f in $FilePath/PaVE_Main\&Sub/*.fasta; do 
 	
 	FileName=${f##*/}

@@ -1,0 +1,30 @@
+------ STANDARD INDSTILLINGER ------
+RunName=Karoline_run_covGenTest
+MainF=/home/pato/Skrivebord/HPV16_projekt
+QualTrim=20
+MinLen=50
+MaxLen=320
+AmpliconRef=K02718.1
+BedFileNameX=IAD209923_226_Designed_compl
+
+------ MODULER ------
+customRefForAll=true
+cRef=HPV35_X74477_1	HPV70_U21941_1	HPV49_X74480_1
+
+customName=false 
+cName=Karoline_run_covGenTest_1207_08072021
+
+indexReferences=false
+cutOutsideAmplicons=false
+qualityFilt=true
+CombineRefs=true
+AlignAndVarCall=true
+SplitAndVarCall=true
+RunAnnoRSCript=true
+RunSiteCovScript=true
+RunNoCallsScript=true
+
+------ VIRSTRAIN -------
+VirStrainGenoAndSubTyping=false
+VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
+VirStrainSubFolders=VirStrainDBs_HPV_sub

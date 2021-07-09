@@ -108,6 +108,8 @@ for(Fastqname in MultiFastqList){
       next
     }
     
+    
+    
     # Error check som fortsætter til næste iteration i loopet hvis der ingen varianter i vcf fil er
     options(warn=2)
     no_elem <- try(predictCoding(c_vcf, Gene_anno, seqSource = faf))
