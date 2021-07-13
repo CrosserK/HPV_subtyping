@@ -1,0 +1,87 @@
+---
+title: "HPV16 exom (22 fastq filer) PaVE_revised K02718.1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+22 fastq filer af HPV16 materiale
+
+Fastq data filtreret fra:
+
+* Q<20 fra 3' enden. Dvs Der bliver trimmet indtil 3' basen har phred score over 20
+
+Bamfil clipped til bedfil amplicon regioner
+
+VCF filtreret fra:
+
+* QD < 2.0
+* DP < 5
+* FS > 60.0
+* SRQ > 3.0
+* MQ < 40.0
+* MQRankSum < -12.5
+* ReadPosRankSum < -8.0
+
+Nocall hvis bamfil dybde på snv position < 5
+
+
+VCF parameter info:
+
+Info: https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants
+
+Filer analyseret:
+
+```{r, echo=FALSE}
+###### EDIT ######
+SuperRunName <- "Exome_50_320_ampliconcalls_PaVE_revised"
+##################
+
+MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep ="")
+FQList <- read.table(paste("/home/pato/Skrivebord/HPV16_projekt/",MultiFQfile, ".txt", sep = ""))
+FQList
+
+```
+
+### Results 50 - 320 bp
+
+```{r, echo=FALSE}
+library(knitr)
+####### EDIT ################
+SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results/"
+Refname <- "HPV16REF_HR_K02718_revised"
+SuperRunName <- "Exome_50_320_ampliconcalls_PaVE_revised"
+##############################
+
+MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep ="")
+in_file <- read.table(file = paste(SaveDir,MultiFQfile,"_AnnotationFrequency_", Refname, ".txt", sep = ""))
+in_file <- in_file[-1,]
+
+kable(in_file, row.names = F, col.names = c("Base", "AA", "GENEID", "Freq", "No_call"))
+
+```
+
+<!-- ### Results 50 - 120 bp -->
+
+<!-- ```{r, echo=FALSE} -->
+<!-- library(knitr) -->
+
+<!-- ####### EDIT ################ -->
+<!-- Refname <- as.character(commandArgs(TRUE)[1]) -->
+<!-- SuperRunName <- as.character(commandArgs(TRUE)[2]) -->
+<!-- ############################## -->
+
+<!-- MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep ="") -->
+<!-- in_file <- read.table(file = paste(SaveDir,MultiFQfile,"_AnnotationFrequency_", Refname, ".txt", sep = "")) -->
+<!-- in_file <- in_file[-1,] -->
+
+<!-- kable(in_file, row.names = F, col.names = c("Base", "AA", "GENEID", "Freq", "No_call")) -->
+
+<!-- ``` -->
+
+
+
+
+
