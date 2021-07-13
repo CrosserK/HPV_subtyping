@@ -16,7 +16,7 @@ library(dplyr)
 ####TEST 
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "Magnus_test_run2_1228_13072021"
+# SuperRunName <- "Karoline_92fastq_1359_05072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 ######
 
@@ -41,7 +41,7 @@ cbind.fill <- function(...){
   rbind(x, matrix(,n-nrow(x), ncol(x))))) 
 }
 
-GFFFolder <- paste(MainF,"/References/GFFfiles/", sep="")
+GFFFolder <- paste("/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles/", sep="")
 
 newdf <- data.frame()
 newdf_nuc <- data.frame()
@@ -52,21 +52,13 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-  # Fastqname <- "pt_76.IonXpress_084"
-  #Fastqname <- "pt_49.IonXpress_069"
+  # Fastqname <- "pt_130.IonXpress_006"
+  #Fastqname <- "pt_45.IonXpress_067"
   #####
   
   Runname <- paste(Fastqname,"_run",sep="")
   # Finder hvilke referencer fastq filer er blevet alignet til 
-  
-  # Tjekker om der er splittede bamfiler pga flere HPV typer i prøve
-  RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,"_SplitTo.txt", sep = "")))
-  if("try-error" %in% class(RevReferences)){
-    RevReferences <- read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,".txt", sep = ""))
-  }
-  
-  counter <- counter + 1 # Tæller for at holde styr på hvor langt script er nået  
-  
+  RevReferences <- read.table(paste(MainF,"/", "VirStrain_run/", SuperRunName,"/", Runname,"/","SubtypeCall.txt", sep = ""))
   # Hopper til næste iteration (næste fastqfil) hvis ingen subtypecalls
   # if("try-error" %in% class(RevReferences)){
   #   novcfcounter <- novcfcounter + 1
@@ -74,6 +66,8 @@ for(Fastqname in MultiFastqList){
   # }
   
   # RevReferences <- RevReferences[,1]
+  
+  counter <- counter + 1 # Tæller for at holde styr på hvor langt script er nået  
   
   # Vælg om der kun skal bruges Most possible subtype (Fra Virstrain call) eller alle skal benyttes. Hvis alle benyttes kan det give et 
   # skævt billede af realiteten er, da hver fastqfil kan give flere resultater (nuværende 3, hvis ikke ændret) fra 1 SNV.
@@ -85,15 +79,16 @@ for(Fastqname in MultiFastqList){
     
     #
     ##TEST
-    #Refname <- "HPV70_U21941_1"
+    #Refname <- "K02718.1_revised"
     ######
     #TEST
-    #RRef <- 3
+    #RRef <- 18
     CallPrio <- which(RevReferences %in% RevReferences[RRef,]) # Gør at det kan ses hvilken rang referencen har fra VirStrain, eller den givne referenceliste
+    
     Refname <- RevReferences[RRef,]
     
     
-    vcfname <- paste(Fastqname,"_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+    vcfname <- paste(Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
     gffname <- paste(Refname,".gff3", sep ="")
     
     gfffile <- paste(GFFFolder, gffname, sep ="")
@@ -101,9 +96,9 @@ for(Fastqname in MultiFastqList){
     Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
 
     
-    Ref <- paste(MainF,"/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
+    Ref <- paste("/home/pato/Skrivebord/HPV16_projekt/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
     faf <- open(FaFile(Ref))
-    Folder <- paste(MainF,"/Results/",SuperRunName,"/", Runname,"/",Refname,"/", sep="")
+    Folder <- paste("/home/pato/Skrivebord/HPV16_projekt/Results/",SuperRunName,"/", Runname,"/",Refname,"/", sep="")
     # Error check for om der er en filtreret vcf fil tilgængelig
     vcffile <- paste(Folder, vcfname, sep ="")
     
@@ -112,6 +107,8 @@ for(Fastqname in MultiFastqList){
       novcfcounter <- novcfcounter + 1
       next
     }
+    
+    
     
     # Error check som fortsætter til næste iteration i loopet hvis der ingen varianter i vcf fil er
     options(warn=2)
@@ -181,7 +178,7 @@ for(Fastqname in MultiFastqList){
   # Conveniece for tracking progress
   print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
   print(paste("Number of vcf files with no variants: ", noelement))
-  print(paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter))
+  print(paste("Number of vcf files corrupt or missing: ", novcfcounter))
   
 }
   
@@ -231,10 +228,8 @@ for(c in 1:ncol(RdyDF)){
   }
 }
 
-RdyDF <- as.data.frame(RdyDF)
-
 # Fjerner tomme kolonner
-RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
+RdyDF <- RdyDF[, colSums(RdyDF != "") != 0] 
 
 write.table(RdyDF, file = paste(SaveDir, "/", "Annotations_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 

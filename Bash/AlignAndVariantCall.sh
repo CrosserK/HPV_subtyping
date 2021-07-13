@@ -20,10 +20,10 @@ cRef="$9"
 
 # HVIS EN SPECIFIK REFERENCE (ikke genotypecalls), CTRL+F: "HER DEFINERES REFERENCER", og sæt customRef=true
 
-# TEST
-#RunName=pt_138.IonXpress_007_run
-#FastQFile=pt_138.IonXpress_007 #input uden extenstion
-#SuperRunFolder=Karoline_run_covGenTest_0859_07072021
+## TEST
+#RunName=pt_83.IonXpress_085_run
+#FastQFile=pt_83.IonXpress_085 #input uden extenstion
+#SuperRunFolder=Magnus_test_run2_1046_13072021
 #MainF=/home/pato/Skrivebord/HPV16_projekt
 #GenotypeCalls=/home/pato/Skrivebord/HPV16_projekt/GenotypeCalls/"${SuperRunFolder}"
 #BedFileNameX=IAD209923_226_Designed_compl
@@ -80,9 +80,10 @@ for refType in $RefList; do
 	currentF=$workD/"$refType"
 	mkdir -p "$currentF"/ResultFiles
 	Ref_FASTA=$RefF/IndexedRef/"${refType}"/"${refType}".fasta # Find reference for picard
-	echo Reference er nu "${Ref_FASTA##*/}"
-	BamFile=$currentF/"${refType}".bam
-	
+	echo Reference er nu ${Ref_FASTA##*/}
+	BamFile=$currentF/${refType}.bam
+
+
 	# Aligner
 	bwa mem -t 12 -v 2 -M "$Ref_FASTA" $SeqF/"${FastQFile}"_filt.fastq > "${BamFile%bam}"sam # -v = verbosity, 2 for errors og warnings kun
 
@@ -90,10 +91,10 @@ for refType in $RefList; do
 	samtools sort "${BamFile%bam}"sam -o "${BamFile%bam}"sort.bam 
 
 	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup.bam \
-	-M $currentF/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_"${refType}".txt
+	-M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $ErrorF/markdup_errors_"${refType}".txt
 
 	java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup_rm.bam \
-	-M "$currentF"/"${refType}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $ErrorF/markdup_errors_"${refType}".txt
+	-M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $ErrorF/markdup_errors_"${refType}".txt
 
 	# Rename & index nodupmarked file
 	samtools index "${BamFile%bam}"sort.bam 
@@ -291,11 +292,11 @@ for refType in $RefList; do
 	# echo cp $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
 	# echo cp ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
 	# echo cp ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
-	mv $currentF/${refType}.sort.dup.bam $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
-	mv $currentF/${refType}.sort.dup.bam.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
+	mv $BamOut $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam; 
+	mv ${BamOut}.bai $currentF/ResultFiles/${FastQFile}_${refType}.sort.bam.bai; 
 	mv ${VarFile%.vcf}_headerfix.vcf $currentF/ResultFiles/${FastQFile}_${refType}.vcf;
 	mv ${VarFile%.vcf}.vcf.idx $currentF/ResultFiles/${FastQFile}_${refType}.vcf.idx;
-	rm ${VarFile%.vcf}_FiltEx.vcf; 
+	rm ${VarFile%.vcf}_FiltEx.vcf ${VarFile%.vcf}_FiltEx.vcf.idx; 
 
 done
 

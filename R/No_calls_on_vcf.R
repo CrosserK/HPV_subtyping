@@ -95,10 +95,17 @@ for(Refname in Refs){
   Anno_freq[,"NucChange"] <- as.data.frame(paste("c.",Anno_freq$NucPos, Anno_freq$NucChange, sep = ""))
   Anno_freq <- Anno_freq[,!names(Anno_freq) %in% "NucPos"]
   # Laver annotation info filer:
-  write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F)
+  write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
   #file.remove(paste(SaveDir,"/","ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""))
 }
 
+fn <- paste(SaveDir, "/","ForNoCallScript_",MultiFQfile,"_Nuc_change_coords.txt", sep = "")
+
+# fjerner NoCallFile fra annoscript
+if (file.exists(fn)) {
+  #Delete file if it exists
+  file.remove(fn)
+}
 
 
 

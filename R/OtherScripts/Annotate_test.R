@@ -4,6 +4,9 @@
 # in a convenient way
 
 #install.packages("BiocManager")
+# BiocManager::install(("genbrankr"))
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
 #BiocManager::install("VariantAnnotation")
 #BiocManager::install("GenomicFeatures", force = TRUE)
 #BiocManager::install("Repitools")
@@ -12,13 +15,14 @@ library(tidyverse)
 library(VariantAnnotation)
 library(Repitools)
 library(dplyr)
+library(genbankr)
 
 ####TEST 
-# MainF <- "/home/pato/Skrivebord/HPV16_projekt"
-# SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "Magnus_test_run2_1228_13072021"
-# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
-######
+MainF <- "/home/pato/Skrivebord/HPV16_projekt"
+SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
+SuperRunName <- "Karoline_92fastq_1359_05072021"
+MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+#####
 
 # Henter variabler fra commandline argumenter
 MainF <- as.character(commandArgs(TRUE)[1])
@@ -41,7 +45,7 @@ cbind.fill <- function(...){
   rbind(x, matrix(,n-nrow(x), ncol(x))))) 
 }
 
-GFFFolder <- paste(MainF,"/References/GFFfiles/", sep="")
+GenbankFolder <- paste(MainF,"/References/GenbankFiles/Tests/", sep="")
 
 newdf <- data.frame()
 newdf_nuc <- data.frame()
@@ -52,7 +56,7 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-  # Fastqname <- "pt_76.IonXpress_084"
+   Fastqname <- "pt_13.IonXpress_041"
   #Fastqname <- "pt_49.IonXpress_069"
   #####
   
@@ -85,7 +89,7 @@ for(Fastqname in MultiFastqList){
     
     #
     ##TEST
-    #Refname <- "HPV70_U21941_1"
+    Refname <- "HPV47_M32305_1"
     ######
     #TEST
     #RRef <- 3
@@ -93,13 +97,53 @@ for(Fastqname in MultiFastqList){
     Refname <- RevReferences[RRef,]
     
     
-    vcfname <- paste(Fastqname,"_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
-    gffname <- paste(Refname,".gff3", sep ="")
+    vcfname <- paste(Fastqname, "_BamSplitFile_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+    GBName <- paste(Refname,".gff3", sep ="")
     
-    gfffile <- paste(GFFFolder, gffname, sep ="")
+    GBFile <- paste(GenbankFolder, GBName, sep ="")
     
-    Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
-
+    #Gene_anno <- makeTxDbFromGFF(GBFile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GBFile[1])
+    gb <- readGenBank(GBFile)
+    Gene_anno <- makeTxDbFromGenBank(gb)
+    
+    gb <- makeTxDbFromGFF(GBFile, format="gff3")
+    view(transcripts(gb))
+    
+    view(VariantAnnotation::select(Gene_anno, column=columns(Gene_anno), keys=keys(Gene_anno), keytype=("GENEID")))
+    
+    
+    
+    
+    gb@genes
+    
+    
+    columns(Gene_anno)
+    view(cds(Gene_anno))
+    
+    view(transcripts(Gene_anno))
+    Gene_anno
+        
+    select(Gene_anno, columns="GENEID", keys="L2", keytype=c("GENEID"))
+    view(Gene_anno$)
+    
+    # txdb <- loadDb(samplefile)
+    # head(seqlevels(txdb))
+    # GR <- transcripts(txdb)
+    # EX <- exons(txdb)
+    # GRList <- transcriptsBy(txdb, by = "gene")
+    # view(GR)
+    # view(EX)
+    # 
+    # UNdersøger txdb objekt
+    columns(Gene_anno)
+    keytypes(Gene_anno)
+    select(Gene_anno, keys = keys, columns="TXNAME", keytype="GENEID")
+    biomaRt::select(Gene_anno, keys = "E2", columns= c("TXNAME","EXONID","CDSNAME","TXSTRAND"), keytype="GENEID")
+    transcripts(Gene_anno)
+    exons(Gene_anno)
+    cds(Gene_anno)
+    promoters(Gene_anno)
+    GRList <- transcriptsBy(Gene_anno, by = "gene")
     
     Ref <- paste(MainF,"/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
     faf <- open(FaFile(Ref))
@@ -181,7 +225,7 @@ for(Fastqname in MultiFastqList){
   # Conveniece for tracking progress
   print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
   print(paste("Number of vcf files with no variants: ", noelement))
-  print(paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter))
+  print(paste("Number of vcf files corrupt or missing: ", novcfcounter))
   
 }
   
@@ -231,10 +275,8 @@ for(c in 1:ncol(RdyDF)){
   }
 }
 
-RdyDF <- as.data.frame(RdyDF)
-
 # Fjerner tomme kolonner
-RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
+RdyDF <- RdyDF[, colSums(RdyDF != "") != 0] 
 
 write.table(RdyDF, file = paste(SaveDir, "/", "Annotations_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 

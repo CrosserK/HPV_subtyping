@@ -4,6 +4,9 @@
 # in a convenient way
 
 #install.packages("BiocManager")
+# BiocManager::install(("genbrankr"))
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
 #BiocManager::install("VariantAnnotation")
 #BiocManager::install("GenomicFeatures", force = TRUE)
 #BiocManager::install("Repitools")
@@ -12,12 +15,14 @@ library(tidyverse)
 library(VariantAnnotation)
 library(Repitools)
 library(dplyr)
+library(genbankr)
+
 
 ####TEST 
-# MainF <- "/home/pato/Skrivebord/HPV16_projekt"
-# SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "Magnus_test_run2_1228_13072021"
-# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+MainF <- "/home/pato/Skrivebord/HPV16_projekt"
+SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
+SuperRunName <- "Karoline_92fastq_1359_05072021"
+MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 ######
 
 # Henter variabler fra commandline argumenter
@@ -41,7 +46,7 @@ cbind.fill <- function(...){
   rbind(x, matrix(,n-nrow(x), ncol(x))))) 
 }
 
-GFFFolder <- paste(MainF,"/References/GFFfiles/", sep="")
+GBFolder <- paste(MainF,"/References/GBFiles/", sep="")
 
 newdf <- data.frame()
 newdf_nuc <- data.frame()
@@ -52,7 +57,7 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-  # Fastqname <- "pt_76.IonXpress_084"
+  # Fastqname <- "pt_13.IonXpress_041"
   #Fastqname <- "pt_49.IonXpress_069"
   #####
   
@@ -85,7 +90,7 @@ for(Fastqname in MultiFastqList){
     
     #
     ##TEST
-    #Refname <- "HPV70_U21941_1"
+    #Refname <- "HPV53_X74482_1_revised"
     ######
     #TEST
     #RRef <- 3
@@ -93,13 +98,13 @@ for(Fastqname in MultiFastqList){
     Refname <- RevReferences[RRef,]
     
     
-    vcfname <- paste(Fastqname,"_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
-    gffname <- paste(Refname,".gff3", sep ="")
+    vcfname <- paste(Fastqname, "_BamSplitFile_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+    gbname <- paste(Refname,".gb", sep ="")
     
-    gfffile <- paste(GFFFolder, gffname, sep ="")
+    GBFile <- paste(GBFolder, gbname, sep ="")
     
-    Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
-
+    #Gene_anno <- makeTxDbFromGFF(GBFile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GBFile[1])
+    Gene_anno <- makeTxDbFromGFF(GBFile)
     
     Ref <- paste(MainF,"/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
     faf <- open(FaFile(Ref))
@@ -136,7 +141,7 @@ for(Fastqname in MultiFastqList){
     # Formatting protein changes
     AAchange <- try(anno_df[c("REFAA","PROTEINLOC", "VARAA","GENEID")]) # "REFAA","PROTEIONLOC","VARAA")
     if("try-error" %in% class(AAchange)){
-      print(paste("No gene info in gff3 file",Refname))
+      print(paste("No gene info in genbank file",Refname))
       rdyAA <- as.data.frame(paste("NoGeneInfoIn",Refname, sep = "_"), col.names = aa)
       rdyNuc <- as.data.frame(paste("NoGeneInfoIn",Refname, sep = "_"))
       colnames(rdyNuc) <- "Mutation"
@@ -181,7 +186,7 @@ for(Fastqname in MultiFastqList){
   # Conveniece for tracking progress
   print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
   print(paste("Number of vcf files with no variants: ", noelement))
-  print(paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter))
+  print(paste("Number of vcf files corrupt or missing: ", novcfcounter))
   
 }
   
@@ -231,10 +236,8 @@ for(c in 1:ncol(RdyDF)){
   }
 }
 
-RdyDF <- as.data.frame(RdyDF)
-
 # Fjerner tomme kolonner
-RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
+RdyDF <- RdyDF[, colSums(RdyDF != "") != 0] 
 
 write.table(RdyDF, file = paste(SaveDir, "/", "Annotations_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 

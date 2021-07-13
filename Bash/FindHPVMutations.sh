@@ -1,7 +1,7 @@
 #!/bin/bash
 #set -e
 #set -u
-set -x
+#set -x
 # set -o pipefail
 
 # Genererer custom referencer efter genotype calls, hvis der er flere HPV typer i en prøve. De vakgte
@@ -40,7 +40,7 @@ VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrai
 ####################################
 
 #Test
-#Name=Karoline_run_covGenTest
+#Name=Magnus1
 #MainF=/home/pato/Skrivebord/HPV16_projekt
 #QualTrim=20
 #MinLen=50
@@ -48,18 +48,20 @@ VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrai
 #AmpliconRef=K02718.1
 #BedFileNameX=IAD209923_226_Designed_compl
 #
-#customName=true 
+#customRefForAll=false
+#
+#customName=false 
 #cName=Karoline_run_covGenTest_1207_08072021
 #indexReferences=false
 #cutOutsideAmplicons=false # Kan risiskere at miste data hvis HPV er andre typer end den brugt til at lave ampliconpanel
 #qualityFilt=true
-#CombineRefs=false
+#CombineRefs=true
 #AlignAndVarCall=true
-#SplitAndVarCall=false
-#RunAnnoRSCript=false
-#RunSiteCovScript=false
-#RunNoCallsScript=false
-#VirStrainGenoAndSubTyping=true # Se nedenstående info
+#SplitAndVarCall=true
+#RunAnnoRSCript=true
+#RunSiteCovScript=true
+#RunNoCallsScript=true
+#VirStrainGenoAndSubTyping=false # Se nedenstående info
 #VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
 #VirStrainSubFolders=VirStrainDBs_HPV_sub
 
@@ -69,8 +71,9 @@ VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrai
 mkdir -p $MainF/{Aligned/{Samfiles,BamFiles/unsorted},GenotypeCalls,References/{IndexedRef,Combined_refs},Results/$SuperRunName/,ReferenceDetails,FASTQ,Analysis/{Qual,Depth,Flagstats,DuplicateMetrics,Errors}} # -p option enables returning no error if folders exist. They will not be overwritten either way. 
 
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
-DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; ResultsF=$MainF/Results/$SuperRunName; InputRefs=$RefF/InputRefs
+DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; InputRefs=$RefF/InputRefs
 
+rm -f $RefF/*fasta.fai
 
 if [ $customName = true ]; then
 
@@ -94,6 +97,7 @@ fi
 
 Rscriptfolder=$MainF/Scripts/R
 MultiFQFile=$(echo FASTQfiles_$SuperRunName)
+ResultsF=$MainF/Results/$SuperRunName
 
 ####################################
 
@@ -239,8 +243,8 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 	else
 	# Ellers hvis der kun er en type i fastq fil, gem da referencenavn i variabel
 	Ref_FASTA=$(< $InputRefs/${FastqInput}.txt)
-	echo "${ref}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
-	echo "${ref}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
+	echo "${Ref_FASTA}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
+	echo "${Ref_FASTA}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
 
 	fi 
 
@@ -298,11 +302,6 @@ conda deactivate
 fi
 
 #######################################################################
-if [ "$customRefForAll" = true ]; then
- echo sand
-else
- echo falsk 
-fi
 
 
 
@@ -322,7 +321,7 @@ do
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
 	GenoTypeCallIn=$MainF/GenotypeCalls/$SuperRunName
 	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $BedFileNameX $AmpliconRef $customRefForAll "$cRef"
-	echo fil $FastqInput færdig... $linenumber of $END
+	echo fil $FastqInput færdig... $linenumber of $END fastqfiler
 
 done
 fi
@@ -342,6 +341,7 @@ do
 	#linenumber=1
 	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+	GenoTypeCallIn=$MainF/GenotypeCalls/$SuperRunName
 	GenoTypeCallForFastq=$(< $MainF/GenotypeCalls/$SuperRunName/${FastqInput}.txt)
 	BamName=${FastqInput}_${GenoTypeCallForFastq}.sort.bam
 	bamtools split -in $ResultsF/$FastqRunInput/$GenoTypeCallForFastq/ResultFiles/$BamName -reference
@@ -349,20 +349,26 @@ do
 
 	StartRefs=1
 	EndRefs=$(awk 'END{print NR}' $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
-	
+	if [ $EndRefs -gt 1 ]; then 
 	for (( linen=$StartRefs; linen<=$EndRefs; linen++ )); do
 	#linen=1
 	SplitRef=$(awk "NR==$linen" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
 	mkdir -p $ResultsF/$FastqRunInput/$SplitRef
 	SplitBam=$ResultsF/$FastqRunInput/$GenoTypeCallForFastq/ResultFiles/${FastqInput}_${GenoTypeCallForFastq}.sort.REF_${SplitRef}.bam
-	mv $SplitBam $ResultsF/$FastqRunInput/$SplitRef/${FastqInput}_BamSplitFile_${SplitRef}.bam
+	mv $SplitBam $ResultsF/$FastqRunInput/$SplitRef/${FastqInput}_${SplitRef}.bam
 
 	#Variant filtrering, indexering og sortering
-	VariantCallFromCovGenotypingSplitRefs.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $BedFileNameX $AmpliconRef
-
+	VariantCallFromCovGenotypingSplitRefs.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $SplitRef $BedFileNameX $AmpliconRef 
 	done
 
-	echo fil $FastqInput færdig... $linenumber of $END
+	else
+
+	# renamer så rscript kan finde vcf fil
+	SplitRef=$(awk "NR==1" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
+	cp $ResultsF/$FastqRunInput/$GenoTypeCallForFastq/${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FastqRunInput/$GenoTypeCallForFastq/${FastqInput}_${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf
+
+	fi
+	echo fil $FastqInput færdig med split calls... $linenumber af $END fastqfiler
 
 done
 fi
@@ -378,9 +384,6 @@ fi
 if [ $RunAnnoRSCript = true ]; then
 
 	# Dette script tager selv fat i nødvendige Fastfiler fra MultiFQFile
-	VirSupOut=$MainF/VirStrain_run/$SuperRunName
-	RunName=${FastqInput}_run
-	VirRunOut_run=$VirSupOut/$RunName
 	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_v2FromGenotypeCalls.R $MainF $MainF/Annotation_results $SuperRunName $MultiFQFile
 
 	# Fix For No call script, hvor multiple aminosyrer ændringer vises med ", " og ændrer til ","
