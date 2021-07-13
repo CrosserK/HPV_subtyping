@@ -37,7 +37,7 @@ De to sidstenævnte variabler bliver ikke brugt medmindre der bliver alignet til
 
 
 ## Modul indstillinger
-**customRefForAll** [true/false] Hvis true ignoreres inputrefs og VirStrain subtypering og alle fastsqfiler bliver alignet til samme reference(r) angivet i cRef. Slå modulerne CombineRefs, SplitAndVarCall og VirStrainGenoAndSubTyping fra, hvis denne aktiveres.
+**customRefForAll** [true/false] Hvis true ignoreres inputrefs og VirStrain subtypering og alle fastsqfiler bliver kun alignet til de(n) reference(r) der er angivet i cRef (se nedenstående). Slå modulerne CombineRefs, SplitAndVarCall og VirStrainGenoAndSubTyping fra, hvis denne aktiveres.
   
 **cRef** Her angives hvilke reference(r) der skal alignes til, hvis customRefForAll er aktiveret. Flere referencer angives med et tab i mellem, eks: 
 HPV35_X74477_1	HPV70_U21941_1	HPV49_X74480_1
