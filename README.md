@@ -95,7 +95,7 @@ Sæt indexReferences=true i FindHPVMutations_options.txt, første gang der køre
 # Resultater
 Resultater kommer ud i filen Annotation_results/AnnotationFrequency_FASTQfiles_<RunName>_<time>_<date>_AllResults.txt, som indeholder summerende statistik over alle fundne varianter.
   
-Filen Annotation_results/Annotations_FASTQfiles_<RunName>_<time>_<date>.txt indeholder info over hvilke varianter der er kaldt i hver enkelt fastqfil. 
+Filen Annotation_results/IndividualFiles_FASTQfiles_<RunName>_<time>_<date>.txt indeholder info over hvilke varianter der er kaldt i hver enkelt fastqfil. 
   
 Alignede reads ligger i bamfiler og varianter i  vcf filer som er lagt i  Results/<RunName>/<fastqnavn>/<reference>/
   
