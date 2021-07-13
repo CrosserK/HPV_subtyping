@@ -1,5 +1,5 @@
 # Info
-FindHPVMutations er et script der kan finde mutationer i HPV typer på nukleotid og aminosyre niveau. Der inputtes hvilke HPV typer der er i en prøve (f.eks gennem info fra en coverage analyse) og scriptet vil så finde varianter for hver type. Scriptet kan også finde hvilken HPV type der er tilstede, men det anbefales ikke hvis der er flere HPV typer i en prøve. 
+FindHPVMutations er et script der kan finde mutationer i HPV typer på nukleotid og aminosyre niveau. Der inputtes hvilke HPV typer der er i en prøve (f.eks gennem info fra en coverage analyse) og scriptet vil så finde varianter for hver type. Scriptet kan også finde hvilken HPV type der er tilstede, men det er ikke optimalt hvis der er flere HPV typer i en prøve. 
 
 # Fremgangsmåde
 1. Læg alle fastq filer fra ION Torrent ind i mappen /home/pato/Skrivebord/HPV16_projekt/FASTQ
