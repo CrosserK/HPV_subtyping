@@ -76,7 +76,7 @@ for refType in "$RefList"; do
 	currentF=$workD/"$refType"
 	mkdir -p "$currentF"/ResultFiles
 	Ref_FASTA=$RefF/IndexedRef/${refType}/${refType}.fasta # Find reference for picard
-	echo Reference er nu "${refType}"
+	echo Reference er nu "${refType}" i splitRef variantcalling
 
 	BamFile=$currentF/${FastQFile}_${refType}.bam
 

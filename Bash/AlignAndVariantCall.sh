@@ -15,8 +15,6 @@ MainF=$4
 GenotypeCalls=$5
 BedFileNameX=$6
 AmpliconRef=$7
-customRefForAll=$8
-cRef="$9"
 
 # HVIS EN SPECIFIK REFERENCE (ikke genotypecalls), CTRL+F: "HER DEFINERES REFERENCER", og sæt customRef=true
 
@@ -48,12 +46,9 @@ DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/Referenc
 
 ###################### Find genotypecall ref ##########################
 
-if [ $customRefForAll = true ]; then
-	RefList="$cRef"
-else
-	# HER DEFINERES REFERENCE FUNDET AF KOMBINEREDE REFERENCER MODUL
-	RefList=$(< $GenotypeCalls/$FastQFile.txt) 
-fi
+# HER DEFINERES REFERENCE FUNDET AF KOMBINEREDE REFERENCER MODUL, ELLER DEFINERET I CUSTOMREFFORALL
+RefList=$(< $GenotypeCalls/$FastQFile.txt) 
+
 
 echo -e Bruger "$RefList" til $FastQFile
 

@@ -233,9 +233,10 @@ for(c in 1:ncol(RdyDF)){
 
 RdyDF <- as.data.frame(RdyDF)
 
+FQFileNameForResult <- str_remove(MultiFQfile,"FASTQfiles_")
 # Fjerner tomme kolonner
 RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
 
-write.table(RdyDF, file = paste(SaveDir, "/", "Annotations_",MultiFQfile, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+write.table(RdyDF, file = paste(SaveDir, "/", "AnnotationIndividualFiles_",FQFileNameForResult,".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 
 

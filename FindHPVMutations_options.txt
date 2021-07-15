@@ -1,26 +1,20 @@
 ------ STANDARD INDSTILLINGER ------
-RunName=Magnus_test_run2
+RunName=subtyperingtest
 MainF=/home/pato/Skrivebord/HPV16_projekt
 QualTrim=20
 MinLen=50
 MaxLen=320
-AmpliconRef=K02718.1
-BedFileNameX=IAD209923_226_Designed_compl
 
 ------ MODULER ------
 
 customRefForAll=false
-cRef=HPV16_K02718_1_revised	HPV30_X74474_1
-
-customName=false 
-cName=
-
+cRef=
+customName=true
+cName=subtyperingtest_1529_14072021
 indexReferences=false
-cutOutsideAmplicons=false
-qualityFilt=true
-CombineRefs=true
-AlignAndVarCall=true
-SplitAndVarCall=true
+qualityFilt=false
+CombineRefs=flase
+AlignAndVarCall=false
 RunAnnoRSCript=true
 RunSiteCovScript=true
 RunNoCallsScript=true
@@ -29,3 +23,8 @@ RunNoCallsScript=true
 VirStrainGenoAndSubTyping=false
 VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
 VirStrainSubFolders=VirStrainDBs_HPV_sub
+
+------ AMPLICONCUT -------
+cutOutsideAmplicons=false
+AmpliconRef=K02718.1
+BedFileNameX=IAD209923_226_Designed_compl

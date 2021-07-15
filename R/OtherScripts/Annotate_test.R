@@ -45,7 +45,7 @@ cbind.fill <- function(...){
   rbind(x, matrix(,n-nrow(x), ncol(x))))) 
 }
 
-GenbankFolder <- paste(MainF,"/References/GenbankFiles/Tests/", sep="")
+GFFFolder <- paste(MainF,"/References/GFFfiles/", sep="")
 
 newdf <- data.frame()
 newdf_nuc <- data.frame()
@@ -56,7 +56,7 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-   Fastqname <- "pt_13.IonXpress_041"
+  #Fastqname <- "pt_13.IonXpress_041"
   #Fastqname <- "pt_49.IonXpress_069"
   #####
   
@@ -100,14 +100,13 @@ for(Fastqname in MultiFastqList){
     vcfname <- paste(Fastqname, "_BamSplitFile_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
     GBName <- paste(Refname,".gff3", sep ="")
     
-    GBFile <- paste(GenbankFolder, GBName, sep ="")
+    GFFfile <- paste(GFFFolder, GBName, sep ="")
     
-    #Gene_anno <- makeTxDbFromGFF(GBFile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GBFile[1])
-    gb <- readGenBank(GBFile)
-    Gene_anno <- makeTxDbFromGenBank(gb)
-    
-    gb <- makeTxDbFromGFF(GBFile, format="gff3")
+    #Gene_anno <- makeTxDbFromGFF(GFFfile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GFFfile[1])
+
+    gb <- makeTxDbFromGFF(GFFfile, format="gff3")
     view(transcripts(gb))
+    view(exons(gb))
     
     view(VariantAnnotation::select(Gene_anno, column=columns(Gene_anno), keys=keys(Gene_anno), keytype=("GENEID")))
     

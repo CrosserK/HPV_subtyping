@@ -17,5 +17,10 @@ for file in /home/pato/Skrivebord/HPV16_projekt/References/GFFfiles/*.gff3; do
 
 done
 
+
 cat $file | awk 
+
+# 
+
+
 

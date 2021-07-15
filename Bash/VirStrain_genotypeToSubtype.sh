@@ -11,6 +11,7 @@ SuperRunName=$3
 MainF=$4
 VirStrain_customdb=$5
 FoundMainType=$6
+MainCallFullName=$7
 
 ##TEST
 #RunName=Pt_33_RNA.IonXpress_087_run
@@ -39,21 +40,36 @@ if [[ -d $VirStrain_db ]]; then
 
 	cd
 
-	# Finder kaldte subtyper:
-	# Printer første felt af 2,3 og 4. linje og fjerner ">" (1. linje er header i rapport)
-	grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $Resultsout/SubtypeCall.txt
-	grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 3 {print $1}' | awk 'sub(/^>/, "")' >> $Resultsout/SubtypeCall.txt
-	grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 4 {print $1}' | awk 'sub(/^>/, "")' >> $Resultsout/SubtypeCall.txt
+	# Checker om der blev fundet en subtype og om der derfor blev lavet en rapport fil
+	if [ -f ${Resultsout}/VirStrain_report.txt ]; then
+		
+		# Finder kaldte subtyper:
+		# Printer første felt af 2,3 og 4. linje og fjerner ">" (1. linje er header i rapport)
+		grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $Resultsout/SubtypeCall.txt
+		grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 3 {print $1}' | awk 'sub(/^>/, "")' >> $Resultsout/SubtypeCall.txt
+		grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 4 {print $1}' | awk 'sub(/^>/, "")' >> $Resultsout/SubtypeCall.txt
 
-	echo -e $FastQFile '\t' $(grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")') >> $SuperRunOut/VirStrain_summary.txt
+		echo -e $FastQFile '\t' $(grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")') >> $SuperRunOut/VirStrain_summary.txt
 
-	# Gemmer bedste strain til downstream scripts
-	grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+		# Gemmer bedste strain til downstream scripts
+		grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+		grep -A10 Top10_Score_Strains ${Resultsout}/VirStrain_report.txt | awk 'FNR == 2 {print $1}' | awk 'sub(/^>/, "")' > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}_SplitTo.txt
 
+	else
+		echo $MainCallFullName > $Resultsout/SubtypeCall.txt
+		echo "(No subtype references)" >> $Resultsout/SubtypeCall.txt
+		echo "$MainCallFullName" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+		echo "$MainCallFullName" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}_SplitTo.txt
+		echo -e $FastQFile "$MainCallFullName" "(No Subtype found)" >> $SuperRunOut/VirStrain_summary.txt
+	fi
+
+# Hvis ingen subtypedatabase, benyt da overtype	
 else
-	echo $FoundMainType > $Resultsout/SubtypeCall.txt
-	echo "(No subtype references)" >> $Resultsout/SubtypeCall.txt
+	echo $MainCallFullName > $Resultsout/SubtypeCall.txt
+	echo "(No subtype found)" >> $Resultsout/SubtypeCall.txt
 
 	# Gemmer bedste strain til downstream scripts
-	"$FoundMainType" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+	echo "$MainCallFullName" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt
+	echo "$MainCallFullName" > $MainF/GenotypeCalls/$SuperRunName/${FastQFile}_SplitTo.txt
+	echo -e $FastQFile "$MainCallFullName" "(No Subtype found)" >> $SuperRunOut/VirStrain_summary.txt
 fi

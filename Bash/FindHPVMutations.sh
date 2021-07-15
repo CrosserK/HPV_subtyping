@@ -1,7 +1,8 @@
 #!/bin/bash
-#set -e
-#set -u
-#set -x
+
+# set -e
+# set -u
+# set -x
 # set -o pipefail
 
 # Genererer custom referencer efter genotype calls, hvis der er flere HPV typer i en prøve. De vakgte
@@ -30,7 +31,6 @@ cutOutsideAmplicons=$(grep "cutOutsideAmplicons=" <<< $Options | sed 's/cutOutsi
 qualityFilt=$(grep "qualityFilt=" <<< $Options | sed 's/qualityFilt=//g') # Skal ligenu være true, ellers skal fastqfiler gives endelsen "_filt.fastq" for at senere moduler kan finde dem
 CombineRefs=$(grep "CombineRefs=" <<< $Options | sed 's/CombineRefs=//g')
 AlignAndVarCall=$(grep "AlignAndVarCall=" <<< $Options | sed 's/AlignAndVarCall=//g')
-SplitAndVarCall=$(grep "SplitAndVarCall=" <<< $Options | sed 's/SplitAndVarCall=//g')
 RunAnnoRSCript=$(grep "RunAnnoRSCript=" <<< $Options | sed 's/RunAnnoRSCript=//g')
 RunSiteCovScript=$(grep "RunSiteCovScript=" <<< $Options | sed 's/RunSiteCovScript=//g')
 RunNoCallsScript=$(grep "RunNoCallsScript=" <<< $Options | sed 's/RunNoCallsScript=//g')
@@ -135,7 +135,7 @@ END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
 fi
 # Dette navngiver filer med endelsen "_filt.fastq", hvilket er et krav for at resten af workflowet kan finde fastq filerne
 ##############################################################################
-
+# Output: _filt.fastq filer
 
 ####### REFERENCE INDEXERING TIL ALIGNMENT OG VARIANTCALLING ##########
 # Putter hver reference i en undermappe for sig, så de er klar til kørsel
@@ -143,7 +143,7 @@ fi
 # Genererer index til bwa mem
 if [ $indexReferences = true ]; then
 
-for f in $RefF/HPV-mwg1c09_MF588727_1.fasta; do
+for f in $RefF/*.fasta; do
 
 	RefName=${f##*/}
 	mkdir -p $RefF/IndexedRef/${RefName%.fasta}
@@ -172,24 +172,44 @@ done
 fi
 ########################################################################
 
-############## LAVER KOMBINEREDE REFERENCER #########################
-if [ $CombineRefs = true ]; then
+# Laver InputRefs filer for alle fastq filer hvis de er brugerdefineret som ens for alle fastq filer
+if [ $customRefForAll = true ]; then
+	START=1
+	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+	for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+	
+	rm -f $MainF/References/InputRefs/${FastqInput}.txt
+	touch $MainF/References/InputRefs/${FastqInput}.txt
+	
+	for newref in ${cRef[@]}; do
+	echo $newref >> $MainF/References/InputRefs/${FastqInput}.txt
+	done
+	done
+fi
+
+
+
+############## LAVER KOMBINEREDE REFERENCER OG/ELLER GEMMER VALGTE REFERENCER I GENOTYPECALLS MAPPE #########################
 mkdir -p $MainF/GenotypeCalls/$SuperRunName
+if [ $CombineRefs = true ] && [ $VirStrainGenoAndSubTyping = false ]; then
 START=1
 END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
 for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 
 
-	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
-	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
-	FastqInputAddr=$SeqF/${FastqInput}.fastq
+FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+FastqInputAddr=$SeqF/${FastqInput}.fastq
 
-	# Finder antal referencer i referencefil
-	RefNumber=$(wc -l $InputRefs/${FastqInput}.txt | awk '{ print $1 }')
-	
-	# Hvis mere end 1 type i prøve:
 
-	if [ $RefNumber -gt 1 ]; then
+
+# Finder antal referencer i referencefil
+RefNumber=$(wc -l $InputRefs/${FastqInput}.txt | awk '{ print $1 }')
+
+# Hvis mere end 1 type i prøve, laver kombinerede referencefiler (fasta) og gemmer info i Genotypecalls mappe
+if [ $RefNumber -gt 1 ]; then
 
 	# Læser referencer som array
 	readarray -t RefsArr < $InputRefs/${FastqInput}.txt
@@ -225,12 +245,10 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 	cp $NewRef $RefF/IndexedRef/${RefName%.fasta}/$RefName
 	Ref_FASTA=$RefF/IndexedRef/${RefName%.fasta}/$RefName
 
-	echo "$(dirname "$0")"
-
 	# Create sequence dictionary for gatk haplotypecaller
 	java -jar picard.jar CreateSequenceDictionary \
-	      R=$Ref_FASTA \
-	      O=${Ref_FASTA%.fasta}.dict 2> $ErrorF/CreateSequenceDictionary_errors_${RefName}.txt
+	R=$Ref_FASTA \
+	O=${Ref_FASTA%.fasta}.dict 2> $ErrorF/CreateSequenceDictionary_errors_${RefName}.txt
 
 	# Create index for bwa mem
 	bwa index $Ref_FASTA
@@ -240,22 +258,47 @@ for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
 
 
 
-	else
-	# Ellers hvis der kun er en type i fastq fil, gem da referencenavn i variabel
+else
+# Ellers hvis der kun er en type i fastq fil, gem da referencenavn i variabel fra txt fil og putter ud i GenotypeCalls mappe til efterfølgende programmer
 	Ref_FASTA=$(< $InputRefs/${FastqInput}.txt)
 	echo "${Ref_FASTA}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
 	echo "${Ref_FASTA}" > $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
 
-	fi 
+fi 
 
 done
+elif [ $CombineRefs = false ] && [ $VirStrainGenoAndSubTyping = false ]; then
+
+	# Ellers hvis der ikke skal kombineres referencer, gem da referencenavne fra inputrefs i genotypecalls
+	START=1
+	END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+	for (( linenumber=$START; linenumber<=$END; linenumber++ )); do
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+
+	rm -f $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
+	touch $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
+
+	rm -f $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
+	touch $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
+
+	for newref in ${cRef[@]}; do
+	echo $newref >> $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt
+	echo $newref >> $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}_SplitTo.txt
+	done
+	done
+
 fi
+
 ###############################################################################################
+# Output: $MainF/GenotypeCalls/${SuperRunName}/${FastqInput}.txt 	og _SplitTo.txt version
+# medmindre VirStrainGenoAndSubTyping er true og combineRefs er false, hvortil ingenting outputtes. 
 
 
 ############################# MAIN GENOTYPING & SUBTYPING ###############################
 if [ $VirStrainGenoAndSubTyping = true ]; then
 # Finder ligenu top 3 most possible strains
+conda init bash
 conda activate VarStrain # VirStrain har meget specifikke krav til pakke versioner, derfor køres conda env
 
 VSdb=$MainF/References/$VirStrainMaindb
@@ -289,11 +332,12 @@ do
 	
 	MainCallFile=$Resultsout/SubtypeCall.txt
 	VirStrainSub=$(grep -m1 -o "^HPV[0-9]*" $MainCallFile) # -m1 for kun at søge første linje og -o for kun at output match og ikke hele linje med match
+	MainCallFullName=$(grep -m1 "^HPV[0-9]*" $MainCallFile)
 	BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
 	VirStrainSubDB=$MainF/References/$VirStrainSubFolders/$BaseDBName
 
 
-	VirStrain_genotypeToSubtype.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainSubDB $VirStrainSub
+	VirStrain_genotypeToSubtype.sh $FastqRunInput $FastqInput $SuperRunName $MainF $VirStrainSubDB $VirStrainSub $MainCallFullName
 	echo $linenumber of $END
 
 done
@@ -302,15 +346,19 @@ conda deactivate
 fi
 
 #######################################################################
+# Output: $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt 	og _SplitTo.txt version
+# Begge med en enkelt reference og ikke flere referencer
+
+
+
+
 
 
 
 ################## MULTIPLE TYPES AWARE ALIGNMENT & VARIANT CALLING ###########################
+# Input: Referencer fra $MainF/GenotypeCalls/$SuperRunName/${FastQFile}.txt, sammen med fastqfiler
 if [ $AlignAndVarCall = true ]; then 
-# Bruger _filt.fastq filer fra filtrering og referencekald fra KOMBINEREDE REFERENCER modul. 
-# Laver 1 fil med alle referencer til No_call_script
-find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
-sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt
+# Bruger _filt.fastq filer fra filtrering og referencekald. 
 
 START=1
 END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
@@ -320,8 +368,8 @@ do
 	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
 	GenoTypeCallIn=$MainF/GenotypeCalls/$SuperRunName
-	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $BedFileNameX $AmpliconRef $customRefForAll "$cRef"
-	echo fil $FastqInput færdig... $linenumber of $END fastqfiler
+	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $BedFileNameX $AmpliconRef
+	echo fil $FastqInput færdig... $linenumber af $END fastqfiler
 
 done
 fi
@@ -331,7 +379,7 @@ fi
 
 
 # FOR EACH UNIQUE CHRNAME SPLIT & VARIANTCALL AGAIN
-if [ $SplitAndVarCall = true ]; then
+if [ $CombineRefs = true ] && [ $VirStrainGenoAndSubTyping = false ]; then
 START=1
 END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
 
@@ -361,12 +409,6 @@ do
 	VariantCallFromCovGenotypingSplitRefs.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $SplitRef $BedFileNameX $AmpliconRef 
 	done
 
-	else
-
-	# renamer så rscript kan finde vcf fil
-	SplitRef=$(awk "NR==1" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
-	cp $ResultsF/$FastqRunInput/$GenoTypeCallForFastq/${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FastqRunInput/$GenoTypeCallForFastq/${FastqInput}_${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf
-
 	fi
 	echo fil $FastqInput færdig med split calls... $linenumber af $END fastqfiler
 
@@ -376,10 +418,36 @@ fi
 
 
 
+
+# Fixer navn på vcf filer som har fået fjernet alle filtrerede varianter helt, hvis der ikke har været kombinerede referencer med splittede bamfiler
+START=1
+END=$(awk 'END{print NR}' $MainF/FASTQfiles_${SuperRunName}.txt)
+for (( linenumber=$START; linenumber<=$END; linenumber++ ))
+do
+	FastqInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}.txt)
+	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
+
+	FILE1=$MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt
+	FILE2=$MainF/GenotypeCalls/$SuperRunName/${FastqInput}.txt
+
+	# Checker om en fastqfil havde kombinerede referencer eller ej
+	if cmp --silent -- "$FILE1" "$FILE2"; then
+	StartRefs=1
+	EndRefs=$(awk 'END{print NR}' $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
+	for (( linen=$StartRefs; linen<=$EndRefs; linen++ )); do
+	#linen=1
+	SplitRef=$(awk "NR==$linen" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
+	# renamer så rscript kan finde vcf fil
+	#SplitRef=$(awk "NR==1" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
+	cp $ResultsF/$FastqRunInput/${SplitRef}/${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FastqRunInput/${SplitRef}/${FastqInput}_${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf
+	done
+	fi
+
+done
+
+
+
 # Følgende scripts læser hvilke FASTQfiler der skal behandles fra FASTQfiles_[navn].txt og FASTQfiles_[navn]_run.txt filerne
-
-# Rscript -e "library(GenomicFeatures)"
-
 
 if [ $RunAnnoRSCript = true ]; then
 
@@ -413,6 +481,10 @@ fi
 
 if [ $RunNoCallsScript = true ]; then
 
+	# Laver 1 fil med alle mulige referencer til No_call_script
+	find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
+	sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt
+
 
 	#if [ -d $ResultsF/$FastqRunInput/$refType ]; then
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF $MainF/Annotation_results $SuperRunName $MultiFQFile
@@ -423,8 +495,11 @@ if [ $RunNoCallsScript = true ]; then
 	rm -f $MainF/Annotation_results/AnnotationFrequency_FASTQfiles_${SuperRunName}_AllResults.txt
 	cat $MainF/Annotation_results/AnnotationFrequency_FASTQfiles_${SuperRunName}*.txt | awk "NR==1 {print}" > colname_${SuperRunName}.txt
 	awk FNR!=1 $MainF/Annotation_results/AnnotationFrequency_FASTQfiles_${SuperRunName}*.txt > anno_${SuperRunName}.txt 
-	cat colname_${SuperRunName}.txt anno_${SuperRunName}.txt > $MainF/Annotation_results/AnnotationFrequency_FASTQfiles_${SuperRunName}_AllResults.txt
+	cat colname_${SuperRunName}.txt anno_${SuperRunName}.txt > $MainF/Annotation_results/AnnotationSummary_${SuperRunName}.txt
+	rm $MainF/Annotation_results/AnnotationFrequency_FASTQfiles_${SuperRunName}*.txt
 	rm colname_${SuperRunName}.txt anno_${SuperRunName}.txt
+	cat $MainF/Annotation_results/FASTQfiles_${SuperRunName}_Nuc_change_coords_*.bed > $MainF/Annotation_results/VariantPositions_${SuperRunName}.bed
+	rm $MainF/Annotation_results/FASTQfiles_${SuperRunName}_Nuc_change_coords_*.bed
 
 fi
 
