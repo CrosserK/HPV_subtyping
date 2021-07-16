@@ -1,5 +1,5 @@
 ------ STANDARD INDSTILLINGER ------
-RunName=subtyperingtest
+RunName=testrun2
 MainF=/home/pato/Skrivebord/HPV16_projekt
 QualTrim=20
 MinLen=50
@@ -9,18 +9,18 @@ MaxLen=320
 
 customRefForAll=false
 cRef=
-customName=true
-cName=subtyperingtest_1529_14072021
+customName=false
+cName=Exome_nodup_1123_15072021
 indexReferences=false
-qualityFilt=false
-CombineRefs=flase
-AlignAndVarCall=false
+qualityFilt=true
+CombineRefs=true
+AlignAndVarCall=true
 RunAnnoRSCript=true
 RunSiteCovScript=true
 RunNoCallsScript=true
 
 ------ VIRSTRAIN -------
-VirStrainGenoAndSubTyping=false
+VirStrainGenoAndSubTyping=true
 VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
 VirStrainSubFolders=VirStrainDBs_HPV_sub
 
