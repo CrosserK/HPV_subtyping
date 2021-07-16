@@ -68,7 +68,7 @@ VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrai
 
 
 # Gå til MainF og opret mappe med samme navn som RunName, eks: 
-mkdir -p $MainF/{Aligned/{Samfiles,BamFiles/unsorted},GenotypeCalls,References/{IndexedRef,Combined_refs},Results/$SuperRunName/,ReferenceDetails,FASTQ,Analysis/{Qual,Depth,Flagstats,DuplicateMetrics,Errors}} # -p option enables returning no error if folders exist. They will not be overwritten either way. 
+mkdir -p $MainF/{GenotypeCalls,References/{IndexedRef,Combined_refs},Results/$SuperRunName/,ReferenceDetails,FASTQ,Analysis/{Qual,Depth,Flagstats,DuplicateMetrics,Errors}} # -p option enables returning no error if folders exist. They will not be overwritten either way. 
 
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
 DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; InputRefs=$RefF/InputRefs
@@ -375,6 +375,15 @@ done
 fi
 ################################################################################################
 
+if [ $VirStrainGenoAndSubTyping = true ]; then
+
+# Flytter filer rundt for convenience, hvis der har været subtyperet
+	FILE1=$MainF/VirStrain_run/$SuperRunName/VirStrain_summary.txt
+	FILE2=$MainF/VirStrain_run/$SuperRunName/GenotypeCalls/VirStrain_summary.txt
+	cp $FILE1 $MainF/Results/$SuperRunName/VirStrainSubtypeCalls.txt
+	cp $FILE2 $MainF/Results/$SuperRunName/VirStrainGenotypeCalls.txt
+
+fi
 
 
 
@@ -439,7 +448,8 @@ do
 	SplitRef=$(awk "NR==$linen" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
 	# renamer så rscript kan finde vcf fil
 	#SplitRef=$(awk "NR==1" $MainF/GenotypeCalls/$SuperRunName/${FastqInput}_SplitTo.txt)
-	cp $ResultsF/$FastqRunInput/${SplitRef}/${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FastqRunInput/${SplitRef}/${FastqInput}_${SplitRef}.sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf
+	# Her indsættes hvis der skal bruge dup markerede ".dup."
+	cp $ResultsF/$FastqRunInput/${SplitRef}/${SplitRef}.sort.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FastqRunInput/${SplitRef}/${FastqInput}_${SplitRef}.sort.readGroupFix_filtered_FiltEx_headerfix.vcf
 	done
 	fi
 
@@ -501,7 +511,14 @@ if [ $RunNoCallsScript = true ]; then
 	cat $MainF/Annotation_results/FASTQfiles_${SuperRunName}_Nuc_change_coords_*.bed > $MainF/Annotation_results/VariantPositions_${SuperRunName}.bed
 	rm $MainF/Annotation_results/FASTQfiles_${SuperRunName}_Nuc_change_coords_*.bed
 
+	# Flytter filer for convenience
+
+	cp $MainF/Annotation_results/AnnotationSummary_${SuperRunName}.txt $MainF/Results/$SuperRunName/AnnotationSummary_${SuperRunName}.txt
+	cp $MainF/Annotation_results/AnnotationIndividualFiles_${SuperRunName}.txt $MainF/Results/$SuperRunName/AnnotationIndividualFiles_${SuperRunName}.txt
+
 fi
+
+
 
 
 # Fjerner alle filtrerede fastqfiler der blev genereret, så de ikke bliver filtreret en gang til ved ny kørsel og der opstår dobbeltfiler

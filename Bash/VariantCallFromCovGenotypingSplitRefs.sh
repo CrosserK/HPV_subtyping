@@ -94,7 +94,8 @@ for refType in "$RefList"; do
 	samtools index "${BamFile%bam}"sort.dup.bam
 	samtools index "${BamFile%bam}"sort.dup_rm.bam
 
-	BamFile="${BamFile%bam}"sort.dup.bam
+	# Her kan angives om dup eller ikke dup skal bruges til resten af kørslen (.dup.)
+	BamFile="${BamFile%bam}"sort.bam
 
 
 	# Splitter nu bamfil i de 2 amplicon pools, hvis reference er ampliconref:

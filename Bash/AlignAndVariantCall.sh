@@ -96,7 +96,8 @@ for refType in $RefList; do
 	samtools index "${BamFile%bam}"sort.dup.bam
 	samtools index "${BamFile%bam}"sort.dup_rm.bam
 
-	BamFile="${BamFile%bam}"sort.dup.bam
+	# Her kan angives om dup eller ikke dup skal bruges til resten af kørsel (.dup.)
+	BamFile="${BamFile%bam}"sort.bam
 
 
 	# Splitter nu bamfil i de 2 amplicon pools, hvis reference er ampliconref:
@@ -145,7 +146,7 @@ for refType in $RefList; do
 
 	done 
 
-	# MERGER ikke Bam filer fra hver pool, da der så vil opstå duplikater, fordi begge splits kan indeholde nogle af de samme reads
+	# MERGER ikke Bam filer fra hver pool, da der så vil opstå duplikater, fordi begge splits kan indeholde nogle af de samme reads 
 
 	# MERGER vcf filer fra hver pool:
 	java -jar picard.jar MergeVcfs \

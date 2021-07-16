@@ -92,8 +92,8 @@ for(Fastqname in MultiFastqList){
     CallPrio <- which(RevReferences %in% RevReferences[RRef,]) # Gør at det kan ses hvilken rang referencen har fra VirStrain, eller den givne referenceliste
     Refname <- RevReferences[RRef,]
     
-    
-    vcfname <- paste(Fastqname,"_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+    # Her deklareres dup, hvis det skal bruges (.dup.)
+    vcfname <- paste(Fastqname,"_", Refname,".sort.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
     gffname <- paste(Refname,".gff3", sep ="")
     
     gfffile <- paste(GFFFolder, gffname, sep ="")

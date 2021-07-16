@@ -89,7 +89,7 @@ for(Fastqname in MultiFastqList){
     
     #
     ##TEST
-    Refname <- "HPV47_M32305_1"
+    Refname <- "HPV16_K02718_1_revised_test"
     ######
     #TEST
     #RRef <- 3
@@ -97,18 +97,32 @@ for(Fastqname in MultiFastqList){
     Refname <- RevReferences[RRef,]
     
     
-    vcfname <- paste(Fastqname, "_BamSplitFile_", Refname,".sort.dup.readGroupFix_filtered_FiltEx_headerfix.vcf", sep ="") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
-    GBName <- paste(Refname,".gff3", sep ="")
-    
-    GFFfile <- paste(GFFFolder, GBName, sep ="")
-    
-    #Gene_anno <- makeTxDbFromGFF(GFFfile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GFFfile[1])
 
-    gb <- makeTxDbFromGFF(GFFfile, format="gff3")
-    view(transcripts(gb))
-    view(exons(gb))
+    rm(gb)
+    Refname <- "HPV16_K02718_1_revised_test2"
+    GBName <- paste(Refname,".gff3", sep ="")
+    GFFfile <- paste(GFFFolder, GBName, sep ="")
+    #Gene_anno <- makeTxDbFromGFF(GFFfile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GFFfile[1])
+    gff3 <- makeTxDbFromGFF(GFFfile, format="gff3")
     
-    view(VariantAnnotation::select(Gene_anno, column=columns(Gene_anno), keys=keys(Gene_anno), keytype=("GENEID")))
+    view(transcripts(gff3))
+    view(exons(gff3))
+    #view(VariantAnnotation::select(Gene_anno, column=columns(Gene_anno), keys=keys(Gene_anno), keytype=("GENEID")))
+    vcfname <- paste("testvcf.vcf") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
+    vcffile <- readVcf(paste(MainF,"/Andet/", vcfname, sep= ""))
+    Refname <- "HPV16_K02718_1_revised"
+    Ref <- paste(MainF,"/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
+    faf <- open(FaFile(Ref))
+    
+    rm(vcf_anno)
+    vcf_anno <- predictCoding(vcffile, gff3, seqSource = faf)
+    class(vcf_anno)
+    
+    anno_df <- as.data.frame(vcf_anno)
+    view(anno_df$GENEID)
+    
+    
+    ?predictCoding
     
     
     
