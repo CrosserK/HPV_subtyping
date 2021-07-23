@@ -31,6 +31,7 @@ MultiFastqListFile <- paste(MainF,"/", MultiFQfile, ".txt", sep = "")
 MultiFastqList <- read.table(MultiFastqListFile)
 MultiFastqList <- as.list(MultiFastqList)
 MultiFastqList <- unlist(MultiFastqList) # Unlister for at for loop kan læse korrekt
+splFolder <- paste(MainF,"/References/E4fixCoords/", sep="")
 
 # Laver funktion som gør at kolonner af forskellig længde kan sættes sammen, hvor kortere kolonner bliver fyldt op med "NA"
 cbind.fill <- function(...){
@@ -52,7 +53,7 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
-  # Fastqname <- "pt_76.IonXpress_084"
+  #Fastqname <- "pt_13.IonXpress_041"
   #Fastqname <- "pt_49.IonXpress_069"
   #####
   
@@ -85,7 +86,7 @@ for(Fastqname in MultiFastqList){
     
     #
     ##TEST
-    #Refname <- "HPV70_U21941_1"
+    #Refname <- "HPV16_K02718_1_revised"
     ######
     #TEST
     #RRef <- 3
@@ -118,7 +119,7 @@ for(Fastqname in MultiFastqList){
     # Derfor ignoreres den og der ledes kun efter fejl med string "none of [..]", som nedenunder
     options(warn=2)
     no_elem <- try(predictCoding(c_vcf, Gene_anno, seqSource = faf)) # Læser som collapsed vcf
-    warnMessAsString <- as.character(no_elem)
+    # warnMessAsString <- as.character(no_elem)
     # if(grepl("none of seqlevels(query) match seqlevels(subject)", warnMessAsString, fixed = TRUE))
     # if("try-error" %in% class(no_elem)) 
 
@@ -137,6 +138,100 @@ for(Fastqname in MultiFastqList){
     
     anno_df <- as.data.frame(vcf_anno_df)
     #anno_df[anno_df==""]
+    
+    # BEGYNDER E4 SPLICE GEN KORREKTION:
+    # Henter faktiske koordinater fra spliceinfo gff fil
+    splname <- paste(Refname,".gff3", sep ="")
+    splfile <- paste(splFolder, splname, sep ="")
+    
+    # Finder splice koordinater
+    txdb <- makeTxDbFromGFF(splfile, format = "gff3")
+    txseq <- extractTranscriptSeqs(faf,cdsBy(txdb, by="tx", use.names=TRUE))
+    translated <- suppressWarnings(translate(txseq))
+    # Fanger gff fil info for at hente koordinater på splicetranskript
+    gffDF <- as.data.frame(VariantAnnotation::select(txdb, column=columns(txdb), keys="E4_splice", keytype=("GENEID")))
+    
+    # For fat på alt nucs i liste
+    altNuc <- anno_df$ALT
+    altNuc = lapply(altNuc, as.character)
+    altNuc = sapply(altNuc, paste, collapse = ",")
+    # Få fat på faktisk codon:
+    # Oversætter nuc koord til splice koord:
+    CoordsFirstPart <- c(gffDF$CDSSTART[1],gffDF$CDSEND[1])
+    # Der skal +1 fordi ellers tælles alle nuc ikke med
+    FirstSplceLen <- CoordsFirstPart[2] - CoordsFirstPart[1] + 1
+    CoordsSecondPart <- c(gffDF$CDSSTART[2],gffDF$CDSEND[2])
+    # Minus 1 for ellers tælles en nucleotid for meget i intron længde
+
+    spliceseq <- as.character(txseq$E4_spliceRNA)
+    splceAA <- as.character(translated$E4_spliceRNA)
+    # For hver række, tjek for ukorrigeret splicegen kald
+    for(i in 1:nrow(anno_df)){
+      if(anno_df$GENEID[i] == "E4_splice"){
+        
+        # Finder koordinat i splice gen
+        if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+          splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1]  
+        } else if(anno_df$Nuc_start[i] < CoordsSecondPart[2]){
+          splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+        }
+        
+        # Finder codonframe:
+        codonframe <- splicecoord%%3
+        # Finder codon:
+        if(codonframe == 0){
+          codon <- substring(spliceseq,splicecoord-2,splicecoord)
+        } else if(codonframe == 1){
+          codon <- substring(spliceseq,splicecoord,splicecoord+2)
+        } else if(codonframe == 2){
+          codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+        }
+        
+        # Retter kald til faktisk splicet gen
+        # Finder AA:
+        AAPos <- (splicecoord + 3 - codonframe)/3 
+        actualAA <- substr(splceAA,AAPos,AAPos)
+        
+        # Bruger integreret aa converter ved at give fuld sekvens
+        currentAltNuc <- altNuc[i]
+        seqForAAconv <- spliceseq
+        substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
+        
+        # Finder ny alt codon
+        if(codonframe == 0){
+          altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+        } else if(codonframe == 1){
+          altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+        } else if(codonframe == 2){
+          altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+        }
+        
+        # Translaterer
+        seqForAAconv <- DNAStringSet(seqForAAconv)
+        actualTrans <- suppressWarnings(translate(seqForAAconv))
+
+                # Laver tilbage til string:
+        actualTransChar <- as.character(actualTrans)
+        actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
+        
+        # Retter tabel med splice informationer
+        #anno_df$CDSLOC.start[i] <- AAPos
+        #anno_df$CDSLOC.end[i] <- AAPos
+        anno_df$PROTEINLOC[i] <- AAPos
+        anno_df$QUERYID[i] <- "x"
+        anno_df$TXID[i] <- "x"
+        anno_df$CDSID[i] <- "x"
+        #anno_df$CONSEQUENCE[i] <- as.factor("x")
+        anno_df$REFCODON[i] <- codon
+        anno_df$VARCODON[i] <- altCodon
+        anno_df$REFAA[i] <- actualAA
+        anno_df$VARAA[i] <- actuallALTAA
+        
+        
+      }
+    }
+    
+    
     
     # Formatting protein changes
     AAchange <- try(anno_df[c("REFAA","PROTEINLOC", "VARAA","GENEID")]) # "REFAA","PROTEIONLOC","VARAA")

@@ -50,7 +50,7 @@ DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/Referenc
 RefList=$(< $GenotypeCalls/$FastQFile.txt) 
 
 
-echo -e Bruger "$RefList" til $FastQFile
+echo -e "Bruger reference(r)" "$RefList" til $FastQFile
 
 ######################################################################################
 
@@ -75,7 +75,7 @@ for refType in $RefList; do
 	currentF=$workD/"$refType"
 	mkdir -p "$currentF"/ResultFiles
 	Ref_FASTA=$RefF/IndexedRef/"${refType}"/"${refType}".fasta # Find reference for picard
-	echo Reference er nu ${Ref_FASTA##*/}
+	echo Aligner nu med reference ${Ref_FASTA##*/}
 	BamFile=$currentF/${refType}.bam
 
 

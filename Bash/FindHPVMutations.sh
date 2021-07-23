@@ -37,6 +37,7 @@ RunNoCallsScript=$(grep "RunNoCallsScript=" <<< $Options | sed 's/RunNoCallsScri
 VirStrainGenoAndSubTyping=$(grep "VirStrainGenoAndSubTyping=" <<< $Options | sed 's/VirStrainGenoAndSubTyping=//g') 
 VirStrainMaindb=$(grep "VirStrainMaindb=" <<< $Options | sed 's/VirStrainMaindb=//g') 
 VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrainSubFolders=//g') 
+E4SpliceCalls==$(grep "E4SpliceCalls=" <<< $Options | sed 's/E4SpliceCalls=//g') 
 ####################################
 
 #Test
@@ -369,7 +370,7 @@ do
 	FastqRunInput=$(awk "NR==$linenumber" $MainF/FASTQfiles_${SuperRunName}_runnames.txt) 
 	GenoTypeCallIn=$MainF/GenotypeCalls/$SuperRunName
 	AlignAndVariantCall.sh $FastqRunInput $FastqInput $SuperRunName $MainF $GenoTypeCallIn $BedFileNameX $AmpliconRef
-	echo fil $FastqInput færdig... $linenumber af $END fastqfiler
+	echo fil $FastqInput færdig med alignment og variantcalling... $linenumber af $END fastqfiler
 
 done
 fi
@@ -459,7 +460,7 @@ done
 
 # Følgende scripts læser hvilke FASTQfiler der skal behandles fra FASTQfiles_[navn].txt og FASTQfiles_[navn]_run.txt filerne
 
-if [ $RunAnnoRSCript = true ]; then
+if [ $RunAnnoRSCript = true ] && [ $E4SpliceCalls = false ]; then
 
 	# Dette script tager selv fat i nødvendige Fastfiler fra MultiFQFile
 	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_v2FromGenotypeCalls.R $MainF $MainF/Annotation_results $SuperRunName $MultiFQFile
@@ -468,6 +469,19 @@ if [ $RunAnnoRSCript = true ]; then
 	sed -i 's/,\s/,/g' $MainF/Annotation_results/ForNoCallScript_FASTQfiles_${SuperRunName}_Nuc_change_coords.txt
 
 fi
+
+
+if [ $E4SpliceCalls = true ]; then
+
+	# Dette script tager selv fat i nødvendige Fastfiler fra MultiFQFile
+	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_wE4SpliceGeneFix.R $MainF $MainF/Annotation_results $SuperRunName $MultiFQFile
+
+	# Fix For No call script, hvor multiple aminosyrer ændringer vises med ", " og ændrer til ","
+	sed -i 's/,\s/,/g' $MainF/Annotation_results/ForNoCallScript_FASTQfiles_${SuperRunName}_Nuc_change_coords.txt
+
+fi
+
+
 
 # Dette script skal bruge liste over alle referencer der køres. Fungerer kun hvis alle fastq filer har været alignet til samme referencer
 

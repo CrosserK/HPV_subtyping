@@ -98,30 +98,64 @@ for(Fastqname in MultiFastqList){
     
     
 
-    rm(gb)
-    Refname <- "HPV16_K02718_1_revised_test2"
-    GBName <- paste(Refname,".gff3", sep ="")
-    GFFfile <- paste(GFFFolder, GBName, sep ="")
-    #Gene_anno <- makeTxDbFromGFF(GFFfile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GFFfile[1])
-    gff3 <- makeTxDbFromGFF(GFFfile, format="gff3")
+    rm(GFFfile)
+    Refname <- "HPV12_X74466_1"
+    Refname <- "HPV16_K02718_1_revised"
+    Refname <- "HPV16_K02718_1_revised_testtilAnno"
+    Refname <- "HPV16_K02718_1_revised_testVirkerIIGV"
+    Refname <- "HPV16_K02718_1_revised_virkeriRhvisCDS3373"
+    vcfname <- "testvcf1.vcf"
+    vcffile <- readVcf(paste(MainF,"/Andet/", vcfname, sep= ""))
+    gffname <- paste(Refname,".gff3", sep ="")
+    GFFfile <- paste(GFFFolder, gffname, sep ="")
+    mygr <- vcffile
+    which(end(mygr) > seqlengths(mygr)[as.character(seqnames(mygr))])
+    # Hvis GB
+    # gbname <- paste(Refname,".gb", sep ="")
+    # gbfile <- paste(GFFFolder, gbname, sep ="")
+    # gbfile = readGenBank(gbfile)
+    # makeTxDbFromGenBank(gb, reassign.ids = FALSE)
+    # gff3 = makeTxDbFromGenBank(gbfile, reassign.ids = FALSE)
+    # ??genbankr
+    # 
+        #Gene_anno <- makeTxDbFromGFF(GFFfile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = GFFfile[1])
+    txdb <- makeTxDbFromGFF(GFFfile, format="gff3") #, circ_seqs = "HPV16_K02718_1_revised"
+    ?makeTxDbFromGFF
+    exons(txdb)
+    transcripts(txdb)
+    transcriptsBy(txdb)
+    cds(txdb)
+    isCircular(txdb)
+    txseq <- extractTranscriptSeqs(faf,cdsBy(txdb, by="tx", use.names=TRUE))
+    suppressWarnings(translate(txseq))
     
-    view(transcripts(gff3))
-    view(exons(gff3))
-    #view(VariantAnnotation::select(Gene_anno, column=columns(Gene_anno), keys=keys(Gene_anno), keytype=("GENEID")))
+    ?extractTranscriptSeqs()
+    
+    class(txdb)
+    Gene_anno <- txdb
+    seqlengths(txdb)
+    seqinfo(txdb)
+    transcripts(txdb)
+    rm(vcf_anno)
+    vcf_anno <- predictCoding(vcffile, txdb, seqSource = faf, ignore.strand=FALSE)
+    
+    vcf_anno
+    #class(vcf_anno)
+    view(VariantAnnotation::select(txdb, column=columns(txdb), keys=keys(txdb), keytype=("GENEID")))
+    #cds(gff3)
+    #view(transcripts(gff3))
+    #?`trim,GenomicRanges-method`
+    #view(exons(gff3))
+    anno_df <- as.data.frame(vcf_anno, row.names = NULL)
+    view(anno_df)
+    view(anno_df$GENEID)
+    
+    # ^
     vcfname <- paste("testvcf.vcf") # Tager fat i vcf med filteret varianter exluderet. # _filtered.filtEx_headerfix
     vcffile <- readVcf(paste(MainF,"/Andet/", vcfname, sep= ""))
     Refname <- "HPV16_K02718_1_revised"
     Ref <- paste(MainF,"/References/IndexedRef/",Refname,"/", Refname, ".fasta", sep = "")
     faf <- open(FaFile(Ref))
-    
-    rm(vcf_anno)
-    vcf_anno <- predictCoding(vcffile, gff3, seqSource = faf)
-    class(vcf_anno)
-    
-    anno_df <- as.data.frame(vcf_anno)
-    view(anno_df$GENEID)
-    
-    
     ?predictCoding
     
     
@@ -188,6 +222,105 @@ for(Fastqname in MultiFastqList){
     vcf_anno_df <- cbind(Nuc_start, vcf_anno_df_2)
     
     anno_df <- as.data.frame(vcf_anno_df)
+    
+    ### HER STARTER FIX AF SPLICE GENER:
+    # Hent faktiske koordinater fra gff fil
+    Splicegff <- "HPV16_K02718_1_revised_virkeriRhvisCDS3373"
+    vcfname <- "testvcf1.vcf"
+    vcffile <- readVcf(paste(MainF,"/Andet/", vcfname, sep= ""))
+    gffname <- paste(Splicegff,".gff3", sep ="")
+    GFFfile <- paste(GFFFolder, gffname, sep ="")
+    txdb <- makeTxDbFromGFF(GFFfile, format="gff3") #, circ_seqs = "HPV16_K02718_1_revised"
+    txseq <- extractTranscriptSeqs(faf,cdsBy(txdb, by="tx", use.names=TRUE))
+    translated <- suppressWarnings(translate(txseq))
+    
+    
+    # For fat på alt nucs i liste
+    altNuc <- anno_df$ALT
+    altNuc = lapply(altNuc, as.character)
+    altNuc = sapply(altNuc, paste, collapse = ",")
+    # Få fat på faktisk codon:
+    # Oversætter nuc koord til splice koord:
+    variantsInFirstPart <- c(865,880)
+    # Der skal +1 fordi ellers tælles alle nuc ikke med
+    FirstSplceLen <- varianterInFirstPart[2] - varianterInFirstPart[1] + 1
+    variantsInSecondPart <- c(3358,3620)
+    # Minus 1 for ellers tælles en nucleotid for meget i intron længde
+    introndiff <- variantsInSecondPart[1]-variantsInFirstPart[2]-1 
+    
+    spliceseq <- as.character(txseq$E4_spliceRNA)
+    splceAA <- as.character(translated$E4_spliceRNA)
+    # For hver række, tjek for ukorrigeret splicegen kald
+    for(i in 1:nrow(anno_df)){
+        if(anno_df$GENEID[i] == "E4_splice"){
+          
+          # Finder koordinat i splice gen
+          if(anno_df$Nuc_start[i] <= variantsInFirstPart[2]){
+            splicecoord <- anno_df$Nuc_start[i] - variantsInFirstPart[1]  
+          } else if(anno_df$Nuc_start[i] < variantsInSecondPart[2]){
+            splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (variantsInSecondPart[1]-1)
+          }
+          
+          # Finder codonframe:
+          codonframe <- splicecoord%%3
+          # Finder codon:
+          if(codonframe == 0){
+            codon <- substring(spliceseq,splicecoord-2,splicecoord)
+          } else if(codonframe == 1){
+            codon <- substring(spliceseq,splicecoord,splicecoord+2)
+          } else if(codonframe == 2){
+            codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+          }
+          
+          # Retter kald til faktisk splicet gen
+          # Finder AA:
+          AAPos <- (splicecoord + 3 - codonframe)/3 
+          
+          # Bruger integreret aa converter ved at give fuld sekvens
+          currentAltNuc <- altNuc[i]
+          seqForAAconv <- spliceseq
+          substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
+          
+          # Finder ny alt codon
+          if(codonframe == 0){
+            altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+          } else if(codonframe == 1){
+            altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+          } else if(codonframe == 2){
+            altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+          }
+          
+          # Translaterer
+          seqForAAconv <- DNAStringSet(seqForAAconv)
+          actualTrans <- suppressWarnings(translate(seqForAAconv))
+          # Laver tilbage til string:
+          actualTransChar <- as.character(actualTrans)
+          actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
+          
+          # Retter tabel med splice informationer
+          #anno_df$CDSLOC.start[i] <- AAPos
+          #anno_df$CDSLOC.end[i] <- AAPos
+          anno_df$PROTEINLOC[i] <- AAPos
+          anno_df$QUERYID[i] <- "x"
+          anno_df$TXID[i] <- "x"
+          anno_df$CDSID[i] <- "x"
+          #anno_df$CONSEQUENCE[i] <- as.factor("x")
+          anno_df$REFCODON[i] <- codon
+          anno_df$VARCODON[i] <- altCodon
+          anno_df$REFAA[i] <- actualAA
+          anno_df$VARAA[i] <- actuallALTAA
+            
+          
+      }
+    }
+      
+  
+
+    
+
+    
+    
+    
     #anno_df[anno_df==""]
     
     # Formatting protein changes

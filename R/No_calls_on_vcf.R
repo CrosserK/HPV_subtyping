@@ -1,9 +1,8 @@
 #!/usr/bin/env Rscript
 
 # Køres efter Sitecoverage.sh for at lave no calls
-
-library(tidyverse)
-library(dplyr)
+suppressMessages(library(tidyverse))
+suppressMessages(library(dplyr))
 
 ##TEST
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
@@ -106,6 +105,5 @@ if (file.exists(fn)) {
   #Delete file if it exists
   file.remove(fn)
 }
-
 
 
