@@ -37,7 +37,7 @@ RunNoCallsScript=$(grep "RunNoCallsScript=" <<< $Options | sed 's/RunNoCallsScri
 VirStrainGenoAndSubTyping=$(grep "VirStrainGenoAndSubTyping=" <<< $Options | sed 's/VirStrainGenoAndSubTyping=//g') 
 VirStrainMaindb=$(grep "VirStrainMaindb=" <<< $Options | sed 's/VirStrainMaindb=//g') 
 VirStrainSubFolders=$(grep "VirStrainSubFolders=" <<< $Options | sed 's/VirStrainSubFolders=//g') 
-E4SpliceCalls==$(grep "E4SpliceCalls=" <<< $Options | sed 's/E4SpliceCalls=//g') 
+E4SpliceCalls=$(grep "E4SpliceCalls=" <<< $Options | sed 's/E4SpliceCalls=//g') 
 ####################################
 
 #Test
@@ -79,7 +79,7 @@ rm -f $RefF/*fasta.fai
 if [ $customName = true ]; then
 
 	SuperRunName=$(grep "cName=" <<< $Options | sed 's/cName=//g') 
-	echo Using custom name...
+	echo "Using custom name and saved reference info..."
 
 else
 
@@ -268,7 +268,7 @@ else
 fi 
 
 done
-elif [ $CombineRefs = false ] && [ $VirStrainGenoAndSubTyping = false ]; then
+elif [ $CombineRefs = false ] && [ $VirStrainGenoAndSubTyping = false ] && [ $customName = false ]; then
 
 	# Ellers hvis der ikke skal kombineres referencer, gem da referencenavne fra inputrefs i genotypecalls
 	START=1

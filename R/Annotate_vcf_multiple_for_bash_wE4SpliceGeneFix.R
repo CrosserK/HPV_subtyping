@@ -13,10 +13,10 @@ suppressMessages(library(VariantAnnotation))
 suppressMessages(library(Repitools))
 suppressMessages(library(dplyr))
 
-####TEST 
+# ###TEST
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "gfftest_1036_22072021"
+# SuperRunName <- "gfftestV1_1340_26072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 ######
 
@@ -54,7 +54,7 @@ novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
   #Fastqname <- "pt_13.IonXpress_041"
-  #Fastqname <- "pt_49.IonXpress_069"
+  #Fastqname <- "pt_138.IonXpress_007"
   #####
   
   Runname <- paste(Fastqname,"_run",sep="")
@@ -87,6 +87,7 @@ for(Fastqname in MultiFastqList){
     #
     ##TEST
     #Refname <- "HPV16_K02718_1_revised"
+    
     ######
     #TEST
     #RRef <- 3
@@ -169,28 +170,69 @@ for(Fastqname in MultiFastqList){
     for(i in 1:nrow(anno_df)){
       if(anno_df$GENEID[i] == "E4_splice"){
         
+  
         # Finder koordinat i splice gen
         if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
-          splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1]  
-        } else if(anno_df$Nuc_start[i] < CoordsSecondPart[2]){
+          # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892, med 892 og +1)
+          splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+        } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
           splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
         }
         
-        # Finder codonframe:
-        codonframe <- splicecoord%%3
+        
+        # Finder nukleotides position i codon og codon
+        invPosInCodon <- splicecoord%%3 
         # Finder codon:
-        if(codonframe == 0){
+        if(invPosInCodon == 0){
           codon <- substring(spliceseq,splicecoord-2,splicecoord)
-        } else if(codonframe == 1){
+          PosInCodon <- 2
+        } else if(invPosInCodon == 1){
           codon <- substring(spliceseq,splicecoord,splicecoord+2)
-        } else if(codonframe == 2){
+          PosInCodon <- 0
+        } else if(invPosInCodon == 2){
           codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+          PosInCodon <- 1
         }
         
+        ThirdNucPos <- 2 - PosInCodon
         # Retter kald til faktisk splicet gen
         # Finder AA:
-        AAPos <- (splicecoord + 3 - codonframe)/3 
+        AAPos <- (splicecoord + ThirdNucPos)/3 
         actualAA <- substr(splceAA,AAPos,AAPos)
+        
+        # Hvis nukleotid reference er længere en 1 (fundet en deletion)
+        if(nchar(anno_df$REF[i]) > 1){
+          
+          # Bruger integreret aa converter ved at give fuld sekvens
+          currentAltNuc <- altNuc[i]
+          seqForAAconv <- spliceseq
+          substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
+          
+          # Finder ny alt codon
+          if(invPosInCodon == 0){
+            altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+          } else if(invPosInCodon == 1){
+            altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+          } else if(invPosInCodon == 2){
+            altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+          }
+          
+          # Translaterer
+          seqForAAconv <- DNAStringSet(seqForAAconv)
+          actualTrans <- suppressWarnings(translate(seqForAAconv))
+          
+          # Laver tilbage til string:
+          actualTransChar <- as.character(actualTrans)
+          actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
+        }
+        
+        # Hvis nukleotid alt er længere en 1 (fundet en insertion)
+        if(nchar(anno_df$ALT[i]) > 1){
+          
+
+          
+        }
+        
         
         # Bruger integreret aa converter ved at give fuld sekvens
         currentAltNuc <- altNuc[i]
@@ -198,11 +240,11 @@ for(Fastqname in MultiFastqList){
         substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
         
         # Finder ny alt codon
-        if(codonframe == 0){
+        if(invPosInCodon == 0){
           altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
-        } else if(codonframe == 1){
+        } else if(invPosInCodon == 1){
           altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
-        } else if(codonframe == 2){
+        } else if(invPosInCodon == 2){
           altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
         }
         

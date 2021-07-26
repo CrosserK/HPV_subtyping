@@ -59,8 +59,8 @@ mkdir -p $ResultsF/$RunName
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 
 ################## BAM CLEANUP & VARIANT DISCOVERY #################
-rm -f $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
-rm -f $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
+#rm -f $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
+#rm -f $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
 touch $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
 touch $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
 MMcountFile=$ResultsF/$RunName/MismatchCounts_"${RunName}".txt

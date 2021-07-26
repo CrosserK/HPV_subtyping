@@ -40,8 +40,6 @@ BedFileName=$BedFileNameX # Regions in bedfile will be soft clipped from bam
 BedFilePool=$MainF/References/BedFiles/"${BedFileNameX}"x.bed
 #######################################################
 
-SuperRunName=$SuperRunFolder
-
 SeqF=$MainF/FASTQ; AnaF=$MainF/Analysis; QualF=$AnaF/Qual; DepthF=$AnaF/Depth; FlagF=$AnaF/Flagstats;
 DupF=$AnaF/DuplicateMetrics; RefdF=$MainF/ReferenceDetails; RefF=$MainF/References; ErrorF=$AnaF/Errors; ResultsF=$MainF/Results/$SuperRunFolder
 
@@ -62,8 +60,8 @@ mkdir -p $ResultsF/$RunName
 workD=$ResultsF/$RunName #Overmappe (working directory) med alle bams som hver er mapped til 1 reference
 
 ################## BAM CLEANUP & VARIANT DISCOVERY #################
-rm -f $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
-rm -f $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
+#rm -f $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
+#rm -f $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
 touch $ResultsF/$RunName/MismatchCounts_"${RunName}".txt
 touch $ResultsF/$RunName/MismatchCounts_filt_"${RunName}".txt
 MMcountFile=$ResultsF/$RunName/MismatchCounts_"${RunName}".txt
@@ -99,7 +97,7 @@ for refType in "$RefList"; do
 
 
 	# Splitter nu bamfil i de 2 amplicon pools, hvis reference er ampliconref:
-	if [ "$refType" == "$AmpliconRef" ]; then # || [ $refType == "${AmpliconRef}"_revised ]
+	if [ "$refType" == "$AmpliconRef" ]; then 
 	for i in 1 2; do
 
 	echo Splitter i 2 pools
