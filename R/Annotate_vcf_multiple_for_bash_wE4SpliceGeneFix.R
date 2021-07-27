@@ -16,9 +16,9 @@ suppressMessages(library(dplyr))
 # ###TEST
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "gfftestV1_1340_26072021"
+# SuperRunName <- "gffIndelTest_1242_27072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
-######
+# #####
 
 # Henter variabler fra commandline argumenter
 MainF <- as.character(commandArgs(TRUE)[1])
@@ -54,7 +54,7 @@ novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
   #Fastqname <- "pt_13.IonXpress_041"
-  #Fastqname <- "pt_138.IonXpress_007"
+  #Fastqname <- "pt_10.IonXpress_051"
   #####
   
   Runname <- paste(Fastqname,"_run",sep="")
@@ -170,41 +170,48 @@ for(Fastqname in MultiFastqList){
     for(i in 1:nrow(anno_df)){
       if(anno_df$GENEID[i] == "E4_splice"){
         
-  
-        # Finder koordinat i splice gen
-        if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
-          # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892, med 892 og +1)
-          splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
-        } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
-          splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
-        }
         
+        # Konverterer DNAstringsets til characters
+        altAsChar <- sapply(anno_df$ALT[i], function(x) as.character(x[[1]]))
+        refAsChar <- sapply(anno_df$REF[i], function(x) as.character(x[[1]]))
         
-        # Finder nukleotides position i codon og codon
-        invPosInCodon <- splicecoord%%3 
-        # Finder codon:
-        if(invPosInCodon == 0){
-          codon <- substring(spliceseq,splicecoord-2,splicecoord)
-          PosInCodon <- 2
-        } else if(invPosInCodon == 1){
-          codon <- substring(spliceseq,splicecoord,splicecoord+2)
-          PosInCodon <- 0
-        } else if(invPosInCodon == 2){
-          codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
-          PosInCodon <- 1
-        }
-        
-        ThirdNucPos <- 2 - PosInCodon
-        # Retter kald til faktisk splicet gen
-        # Finder AA:
-        AAPos <- (splicecoord + ThirdNucPos)/3 
-        actualAA <- substr(splceAA,AAPos,AAPos)
-        
-        # Hvis nukleotid reference er længere en 1 (fundet en deletion)
-        if(nchar(anno_df$REF[i]) > 1){
+        # Hvis længden af variant = 1:
+        if(nchar(refAsChar) == 1 && nchar(altAsChar) == 1){
+          print("E4 SNV")
+          
+          
+          # Finder koordinat i splice gen
+          if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+            # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892, med 892 og +1)
+            splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+          } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
+            splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+          }
+          
+          
+          # Finder nukleotides position i codon og codon
+          invPosInCodon <- splicecoord%%3 
+          # Finder codon:
+          if(invPosInCodon == 0){
+            codon <- substring(spliceseq,splicecoord-2,splicecoord)
+            PosInCodon <- 2
+          } else if(invPosInCodon == 1){
+            codon <- substring(spliceseq,splicecoord,splicecoord+2)
+            PosInCodon <- 0
+          } else if(invPosInCodon == 2){
+            codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+            PosInCodon <- 1
+          }
+          
+          ThirdNucPos <- 2 - PosInCodon
+          # Retter kald til faktisk splicet gen
+          # Finder AA:
+          AAPos <- (splicecoord + ThirdNucPos)/3 
+          actualAA <- substr(splceAA,AAPos,AAPos)
           
           # Bruger integreret aa converter ved at give fuld sekvens
           currentAltNuc <- altNuc[i]
+          
           seqForAAconv <- spliceseq
           substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
           
@@ -224,37 +231,269 @@ for(Fastqname in MultiFastqList){
           # Laver tilbage til string:
           actualTransChar <- as.character(actualTrans)
           actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
-        }
-        
-        # Hvis nukleotid alt er længere en 1 (fundet en insertion)
-        if(nchar(anno_df$ALT[i]) > 1){
           
-
           
-        }
-        
-        
-        # Bruger integreret aa converter ved at give fuld sekvens
-        currentAltNuc <- altNuc[i]
-        seqForAAconv <- spliceseq
-        substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
-        
-        # Finder ny alt codon
-        if(invPosInCodon == 0){
-          altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
-        } else if(invPosInCodon == 1){
-          altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
-        } else if(invPosInCodon == 2){
-          altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
-        }
-        
-        # Translaterer
-        seqForAAconv <- DNAStringSet(seqForAAconv)
-        actualTrans <- suppressWarnings(translate(seqForAAconv))
+          
+          # Ellers hvis der er fundet en deletion
+        } else if(nchar(refAsChar) > 1 && nchar(altAsChar) == 1){
+          print("E4 del")
+          
+          # Tjekker for frameshift:
+          if((nchar(refAsChar)-1)%%3 == 0){
+            
+            # Ingen frameshift, finder aminosyre ændring
+            # Finder koordinat i splice gen
+            if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+              # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892 med 892 og +1)
+              splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+            } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
+              splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+            }
+            
+            extraNCodons <- (nchar(refAsChar)-1)/3
+            
+            # Finder nukleotides position i codon og codon
+            invPosInCodon <- splicecoord%%3 
+            # Finder codon:
+            
+            if(invPosInCodon == 0){
+              firstCodon <- substring(spliceseq,splicecoord-2,splicecoord)
+              PosInCodon <- 2
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+1,splicecoord+1+extraNCodons*3-1), sep="")
+            } else if(invPosInCodon == 1){
+              firstCodon <- substring(spliceseq,splicecoord,splicecoord+2)
+              PosInCodon <- 0
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+3,splicecoord+3+extraNCodons*3-1), sep="")
+            } else if(invPosInCodon == 2){
+              firstCodon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+              PosInCodon <- 1
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+2,splicecoord+2+extraNCodons*3-1), sep="")
+            }
+            
+            ThirdNucPos <- 2 - PosInCodon
+            # Retter kald til faktisk splicet gen
+            # Finder AA:
+            AAPos <- (splicecoord + ThirdNucPos)/3 
+            actualAA <- paste("c(",AAPos,":",AAPos+extraNCodons,")", substr(splceAA,AAPos,AAPos + extraNCodons),sep="")
+            
+            # Bruger integreret aa converter ved at give fuld sekvens
+            currentAltNuc <- altNuc[i]
+            
+            seqForAAconv <- spliceseq
+            substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
+            
+            
+            # Finder ny alt codon
+            if(invPosInCodon == 0){
+              altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+            } else if(invPosInCodon == 1){
+              altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+            } else if(invPosInCodon == 2){
+              altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+            }
+            
+            
+            
+            # Translaterer
+            seqForAAconv <- DNAStringSet(seqForAAconv)
+            actualTrans <- suppressWarnings(translate(seqForAAconv))
+            
+            # Laver tilbage til string:
+            actualTransChar <- as.character(actualTrans)
+            actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
+            
+          } else {
+            
+            # Frameshift
+            actuallALTAA <- "*"
+            
+            # Ingen frameshift, finder aminosyre ændring
+            # Finder koordinat i splice gen
+            if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+              # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892 med 892 og +1)
+              splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+            } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
+              splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+            }
+            
+            extraNCodons <- (nchar(refAsChar)-1)/3
+            
+            # Finder nukleotides position i codon og codon
+            invPosInCodon <- splicecoord%%3 
+            # Finder codon:
+            
+            if(invPosInCodon == 0){
+              firstCodon <- substring(spliceseq,splicecoord-2,splicecoord)
+              PosInCodon <- 2
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+1,splicecoord+1+extraNCodons*3-1), sep="")
+            } else if(invPosInCodon == 1){
+              firstCodon <- substring(spliceseq,splicecoord,splicecoord+2)
+              PosInCodon <- 0
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+3,splicecoord+3+extraNCodons*3-1), sep="")
+            } else if(invPosInCodon == 2){
+              firstCodon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+              PosInCodon <- 1
+              codon <- paste(firstCodon, substr(spliceseq,splicecoord+2,splicecoord+2+extraNCodons*3-1), sep="")
+            }
+            
+            ThirdNucPos <- 2 - PosInCodon
+            # Retter kald til faktisk splicet gen
+            # Finder AA:
+            AAPos <- (splicecoord + ThirdNucPos)/3 
+            actualAA <- paste("c(",AAPos,":",AAPos+extraNCodons,")", substr(splceAA,AAPos,AAPos + extraNCodons),sep="")
+            
+            # Bruger integreret aa converter ved at give fuld sekvens
+            currentAltNuc <- altNuc[i]
+            
+            seqForAAconv <- spliceseq
+            substr(seqForAAconv, splicecoord, splicecoord) <- currentAltNuc
+            
+            
+            # Finder ny alt codon
+            if(invPosInCodon == 0){
+              altCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+            } else if(invPosInCodon == 1){
+              altCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+            } else if(invPosInCodon == 2){
+              altCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+            }
+            
+          }
+          
+          # Ellers hvis der er fundet en insertion
+        } else if(nchar(refAsChar) == 1 && nchar(altAsChar) > 1){
+          print("E4 ins")
+          
+          # Tjekker for frameshift:
+          if((nchar(refAsChar)-1)%%3 == 0){
+            
+            # Ingen frameshift, finder aminosyre ændring
+            # Finder koordinat i splice gen
+            if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+              # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892 med 892 og +1)
+              splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+            } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
+              splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+            }
+            
 
-                # Laver tilbage til string:
-        actualTransChar <- as.character(actualTrans)
-        actuallALTAA <- substring(actualTransChar,AAPos, AAPos) 
+            extraNCodons <- (nchar(altAsChar)-1)/3
+            
+            # Finder nukleotides position i codon og codon
+            invPosInCodon <- splicecoord%%3 
+            # Finder codon:
+            
+            if(invPosInCodon == 0){
+              codon <- substring(spliceseq,splicecoord-2,splicecoord)
+              PosInCodon <- 2
+            } else if(invPosInCodon == 1){
+              codon <- substring(spliceseq,splicecoord,splicecoord+2)
+              PosInCodon <- 0
+            } else if(invPosInCodon == 2){
+              codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+              PosInCodon <- 1
+            }
+            
+            ThirdNucPos <- 2 - PosInCodon
+            # Retter kald til faktisk splicet gen
+            # Finder AA:
+            AAPos <- (splicecoord + ThirdNucPos)/3 
+            actualAA <- substr(splceAA,AAPos,AAPos)
+            
+            # Bruger integreret aa converter ved at give fuld sekvens
+            currentAltNuc <- altAsChar
+            seqForAAconv <- spliceseq
+            # Sætter ny splice sekvens sammen med insertion
+            seqForAAconv <- paste(substr(seqForAAconv, 1, splicecoord),substr(currentAltNuc,2,nchar(currentAltNuc)),substr(seqForAAconv, splicecoord+1, nchar(seqForAAconv)),sep="") 
+            
+            # Finder ny alt codon
+            if(invPosInCodon == 0){
+              firstCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+1,splicecoord+1+extraNCodons*3-1),sep="")
+            } else if(invPosInCodon == 1){
+              firstCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+3,splicecoord+3+extraNCodons*3-1),sep="")
+            } else if(invPosInCodon == 2){
+              firstCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+2,splicecoord+2+extraNCodons*3-1),sep="")
+            }
+            
+            # Translaterer
+            seqForAAconv <- DNAStringSet(seqForAAconv)
+            actualTrans <- suppressWarnings(translate(seqForAAconv))
+            
+            # Laver tilbage til string:
+            actualTransChar <- as.character(actualTrans)
+            actuallALTAA <- substring(actualTransChar,AAPos, AAPos+extraNCodons) 
+            
+            
+          } else {
+            
+            # Frameshift
+            actuallALTAA <- "*"
+            
+            # Ingen frameshift, finder aminosyre ændring
+            # Finder koordinat i splice gen
+            if(anno_df$Nuc_start[i] <= CoordsFirstPart[2]){
+              # Henter position, derfor +1 (eks hvis pos 892, svarer til pos 1, så minuses 892 med 892 og +1)
+              splicecoord <- anno_df$Nuc_start[i] - CoordsFirstPart[1] + 1  
+            } else if(anno_df$Nuc_start[i] <= CoordsSecondPart[2]){
+              splicecoord <- anno_df$Nuc_start[i] + FirstSplceLen - (CoordsSecondPart[1]-1)
+            }
+            
+
+            extraNCodons <- (nchar(altAsChar)-1)/3
+            
+            # Finder nukleotides position i codon og codon
+            invPosInCodon <- splicecoord%%3 
+            # Finder codon:
+            
+            if(invPosInCodon == 0){
+              codon <- substring(spliceseq,splicecoord-2,splicecoord)
+              PosInCodon <- 2
+            } else if(invPosInCodon == 1){
+              codon <- substring(spliceseq,splicecoord,splicecoord+2)
+              PosInCodon <- 0
+            } else if(invPosInCodon == 2){
+              codon <- substring(spliceseq,splicecoord-1,splicecoord+1)
+              PosInCodon <- 1
+            }
+            
+            ThirdNucPos <- 2 - PosInCodon
+            # Retter kald til faktisk splicet gen
+            # Finder AA:
+            AAPos <- (splicecoord + ThirdNucPos)/3 
+            actualAA <- substr(splceAA,AAPos,AAPos)
+            
+            # Bruger integreret aa converter ved at give fuld sekvens
+            currentAltNuc <- altAsChar
+            seqForAAconv <- spliceseq
+            # Sætter ny splice sekvens sammen med insertion
+            seqForAAconv <- paste(substr(seqForAAconv, 1, splicecoord),substr(currentAltNuc,2,nchar(currentAltNuc)),substr(seqForAAconv, splicecoord+1, nchar(seqForAAconv)),sep="") 
+            
+            # Finder ny alt codon
+            if(invPosInCodon == 0){
+              firstCodon <- substring(seqForAAconv,splicecoord-2,splicecoord)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+1,splicecoord+1+extraNCodons*3-1),sep="")
+            } else if(invPosInCodon == 1){
+              firstCodon <- substring(seqForAAconv,splicecoord,splicecoord+2)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+3,splicecoord+3+extraNCodons*3-1),sep="")
+            } else if(invPosInCodon == 2){
+              firstCodon <- substring(seqForAAconv,splicecoord-1,splicecoord+1)
+              # Udvider codon med insertion
+              altCodon <- paste(firstCodon,substring(seqForAAconv,splicecoord+2,splicecoord+2+extraNCodons*3-1),sep="")
+            }
+            
+            
+        }
+        
+        }
+        
         
         # Retter tabel med splice informationer
         #anno_df$CDSLOC.start[i] <- AAPos
@@ -268,10 +507,9 @@ for(Fastqname in MultiFastqList){
         anno_df$VARCODON[i] <- altCodon
         anno_df$REFAA[i] <- actualAA
         anno_df$VARAA[i] <- actuallALTAA
-        
-        
       }
     }
+    
     
     
     
@@ -317,7 +555,6 @@ for(Fastqname in MultiFastqList){
     
     #newdf_nuc_coord <- cbind.fill(newdf_nuc_coord,Nuc$Nuc_start)
     
-
   }
   
   # Conveniece for tracking progress
@@ -325,7 +562,10 @@ for(Fastqname in MultiFastqList){
   print(paste("Number of vcf files with no variants: ", noelement))
   print(paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter))
   
-}
+
+}  
+
+
   
 # Find each unique instance of change:
 Fredf <- table(newdf)
