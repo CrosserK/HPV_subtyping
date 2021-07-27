@@ -1,5 +1,5 @@
 ------ STANDARD INDSTILLINGER ------
-RunName=testrun2
+RunName=gffIndelTest
 MainF=/home/pato/Skrivebord/HPV16_projekt
 QualTrim=20
 MinLen=50
@@ -8,19 +8,21 @@ MaxLen=320
 ------ MODULER ------
 
 customRefForAll=false
-cRef=
-customName=false
-cName=Exome_nodup_1123_15072021
+cRef=HPV16_K02718_1_revised
+customName=true
+cName=gffIndelTest_1242_27072021
 indexReferences=false
-qualityFilt=true
-CombineRefs=true
-AlignAndVarCall=true
+qualityFilt=false
+CombineRefs=false
+AlignAndVarCall=false
 RunAnnoRSCript=true
+E4SpliceCalls=true
 RunSiteCovScript=true
 RunNoCallsScript=true
 
+
 ------ VIRSTRAIN -------
-VirStrainGenoAndSubTyping=true
+VirStrainGenoAndSubTyping=false
 VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
 VirStrainSubFolders=VirStrainDBs_HPV_sub
 
