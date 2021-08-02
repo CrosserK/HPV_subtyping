@@ -62,7 +62,12 @@ for(Fastqname in MultiFastqList){
   # Tjekker om der er splittede bamfiler pga flere HPV typer i prøve
   RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,"_SplitTo.txt", sep = "")))
   if("try-error" %in% class(RevReferences)){
-    RevReferences <- read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,".txt", sep = ""))
+    RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,".txt", sep = "")))
+    
+    # Hvis ingen referencer givet til fastqfil gå da til næste fastqfil
+    if("try-error" %in% class(RevReferences)){
+      next
+    }
   }
   
   counter <- counter + 1 # Tæller for at holde styr på hvor langt script er nået  

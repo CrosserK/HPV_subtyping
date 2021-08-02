@@ -18,10 +18,10 @@ library(dplyr)
 library(genbankr)
 
 ####TEST 
-MainF <- "/home/pato/Skrivebord/HPV16_projekt"
-SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-SuperRunName <- "Karoline_92fastq_1359_05072021"
-MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+# MainF <- "/home/pato/Skrivebord/HPV16_projekt"
+# SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
+# SuperRunName <- "Karoline_92fastq_1359_05072021"
+# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 #####
 
 # Henter variabler fra commandline argumenter

@@ -16,7 +16,7 @@ suppressMessages(library(dplyr))
 # ###TEST
 # MainF <- "/home/pato/Skrivebord/HPV16_projekt"
 # SaveDir <- "/home/pato/Skrivebord/HPV16_projekt/Annotation_results"
-# SuperRunName <- "gffIndelTest_1242_27072021"
+# SuperRunName <- "Karoline_92pt_E4_1339_29072021"
 # MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
 # #####
 
@@ -54,16 +54,20 @@ novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   ###TEST
   #Fastqname <- "pt_13.IonXpress_041"
-  #Fastqname <- "pt_10.IonXpress_051"
+  #Fastqname <- "pt_61.IonXpress_077"
   #####
-  
   Runname <- paste(Fastqname,"_run",sep="")
   # Finder hvilke referencer fastq filer er blevet alignet til 
   
   # Tjekker om der er splittede bamfiler pga flere HPV typer i prøve
   RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,"_SplitTo.txt", sep = "")))
   if("try-error" %in% class(RevReferences)){
-    RevReferences <- read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,".txt", sep = ""))
+    RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,".txt", sep = "")))
+    
+    # Hvis ingen referencer givet til fastqfil gå da til næste fastqfil
+    if("try-error" %in% class(RevReferences)){
+      next
+    }
   }
   
   counter <- counter + 1 # Tæller for at holde styr på hvor langt script er nået  
@@ -87,6 +91,7 @@ for(Fastqname in MultiFastqList){
     #
     ##TEST
     #Refname <- "HPV16_K02718_1_revised"
+    #Refname <- "HPV6_X00203_1_revised"
     
     ######
     #TEST
@@ -100,6 +105,7 @@ for(Fastqname in MultiFastqList){
     
     gfffile <- paste(GFFFolder, gffname, sep ="")
     
+    print(paste("Bruger GFF",gffname,"til",Fastqname,sep=" "))
     Gene_anno <- makeTxDbFromGFF(gfffile, format = "gff3") # Laver TxDb objekt fra gff3 eller gtf fil. # , , circ_seqs = gfffile[1])
 
     
@@ -108,7 +114,6 @@ for(Fastqname in MultiFastqList){
     Folder <- paste(MainF,"/Results/",SuperRunName,"/", Runname,"/",Refname,"/", sep="")
     # Error check for om der er en filtreret vcf fil tilgængelig
     vcffile <- paste(Folder, vcfname, sep ="")
-    
     c_vcf <- try(readVcf(vcffile)) # læser som collapsed vcf
     if("try-error" %in% class(c_vcf)){
       novcfcounter <- novcfcounter + 1
@@ -146,8 +151,10 @@ for(Fastqname in MultiFastqList){
     splfile <- paste(splFolder, splname, sep ="")
     
     # Finder splice koordinater
+    print(paste("splfil",splfile))
     txdb <- makeTxDbFromGFF(splfile, format = "gff3")
     txseq <- extractTranscriptSeqs(faf,cdsBy(txdb, by="tx", use.names=TRUE))
+    print("splfile færdig")
     translated <- suppressWarnings(translate(txseq))
     # Fanger gff fil info for at hente koordinater på splicetranskript
     gffDF <- as.data.frame(VariantAnnotation::select(txdb, column=columns(txdb), keys="E4_splice", keytype=("GENEID")))
@@ -540,7 +547,8 @@ for(Fastqname in MultiFastqList){
     Nuc <- cbind(sepera = ",", Nuc)
     rdyNuc <- as.data.frame(paste(Nuc$Nuc_start,Nuc$sepera, Nuc$REF, Nuc$a, Nuc$ALT@unlistData, sep = ""))
     colnames(rdyNuc) <- "Mutation"
-    rm(AnnoRdy) 
+    # Resetter Annordy variabel, så den er klar til nyt loop
+    AnnoRdy <- 0
     #Merger AA og nuc info til 1 kolonne
     AnnoRdy <- data.frame(matrix(ncol = 1, nrow = nrow(rdyAA)))
     for(j in 1:nrow(rdyAA)){

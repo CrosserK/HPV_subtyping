@@ -1,5 +1,5 @@
 ------ STANDARD INDSTILLINGER ------
-RunName=gffIndelTest
+RunName=Karoline_92pt_E4
 MainF=/home/pato/Skrivebord/HPV16_projekt
 QualTrim=20
 MinLen=50
@@ -10,7 +10,7 @@ MaxLen=320
 customRefForAll=false
 cRef=HPV16_K02718_1_revised
 customName=true
-cName=gffIndelTest_1242_27072021
+cName=Karoline_92pt_E4_1339_29072021
 indexReferences=false
 qualityFilt=false
 CombineRefs=false
