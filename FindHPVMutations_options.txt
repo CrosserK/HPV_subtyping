@@ -1,20 +1,20 @@
 ------ STANDARD INDSTILLINGER ------
-RunName=Karoline_92pt_E4
-MainF=/home/pato/Skrivebord/HPV16_projekt
+RunName=KaroTest
+MainF=/home/pato/Skrivebord/HPV_subtyping
 QualTrim=20
 MinLen=50
 MaxLen=320
 
------- MODULER ------
 
+------ MODULER ------
 customRefForAll=false
 cRef=HPV16_K02718_1_revised
-customName=true
-cName=Karoline_92pt_E4_1339_29072021
-indexReferences=false
-qualityFilt=false
-CombineRefs=false
-AlignAndVarCall=false
+customName=false
+cName=Sara2x24chip1og2_1027_26082021_e4fixsubtypes
+indexReferences=true
+qualityFilt=true
+CombineRefs=true
+AlignAndVarCall=true
 RunAnnoRSCript=true
 E4SpliceCalls=true
 RunSiteCovScript=true
@@ -26,7 +26,9 @@ VirStrainGenoAndSubTyping=false
 VirStrainMaindb=Combined_mainlines_wRevised_wHPV-mTypes
 VirStrainSubFolders=VirStrainDBs_HPV_sub
 
+
 ------ AMPLICONCUT -------
+# NOTE: ONLY WORKS IF ALL GIVEN FASTQ FIT THE GIVEN BED FILE
 cutOutsideAmplicons=false
 AmpliconRef=K02718.1
 BedFileNameX=IAD209923_226_Designed_compl
