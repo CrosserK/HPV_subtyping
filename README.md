@@ -1,5 +1,5 @@
 # HPV_subtyping (In development)
-Workflow to get from FASTQ files to calling the HPV16 subtype, given references of possible subtypes. The worfklow will also generate a report with nucleotide and amino acid changes. 
+Workflow to get from FASTQ files to calling the HPV geno- and subtype, given references of possible types. The worfklow will also generate a report with nucleotide and amino acid changes. 
 
 ### Workflow
 
