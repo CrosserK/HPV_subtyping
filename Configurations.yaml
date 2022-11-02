@@ -2,37 +2,31 @@
 # (right click somewhere in the folder and click Open in Terminal)
 # Then drag FindHPVMutations.sh into the terminal and press enter.
 
-# MAIN FOLDER
-  MainF: /home/pato/Skrivebord/HPV_subtyping
-  
 # NAMING
   RunName: HPV16_panel_Sara_Opsaet_11A_830
-  customName: false
-  cName: Sara2x24chip1og2_1027_26082021_e4fixsubtypess
+  
+  # For debugging, or continuing halted run:
+  customName: true
+  cName: HPV16_panel_Sara_Opsaet_11A_830_1412_02112022
   
 # QUALITY FILTERING
-  qualityFilt: true 
-  QualTrim: 20 
-  MinLen: 50 
-  MaxLen: 320 
+  qualityFilt: false
+  QualTrim: 20
+  MinLen: 50
+  MaxLen: 320
 
 # GENO AND SUBTYPING
-  # Getting genotype from the covarage matrix allows multiple strain detection from each fastq: 
-  genotypeFromCovMatrix: false
-  VirStrainSubTyping: true
-  # Using Virstrain for both geno- and subtyping, means there will only be detected 1 strain in each fastq: 
-  VirStrainGenoAndSubTyping: false 
+  # Choose only one GenoTyping (or none if inserted manually in InputRefs folder):
+  CovMatrixGenoTyping: false
+  VirStrainGenoTyping: false
+  VirStrainSubTyping: false
+  # Set how many found types to use. I.e. use top 3 best found genotypes.
+  GenoTypingTop: 1
+  SubTypingTop: 1
+  # VirStrain database paths
   VirStrainMaindb: Combined_mainlines_wRevised_wHPV-mTypes
   VirStrainSubFolders: VirStrainDBs_HPV_sub
-
-# MODULES
-  CombineRefs: true
-  AlignAndVarCall: true
-  RunAnnoRSCript: false
-  E4SpliceCalls: false
-  RunSiteCovScript: false
-  RunNoCallsScript: false
-  
+ 
 # REFERENCES
   # If database includes new references, set to true:
   indexReferences: false 
@@ -40,7 +34,14 @@
   customRefForAll: false
   cRef: HPV16_K02718_1_revised
 
-# AMPLICONCUT (BETA)
+# AMPLICONCUT (Only one ampliconref currently possible)
   cutOutsideAmplicons: false 
   AmpliconRef: K02718.1
   BedFileNameX: IAD209923_226_Designed_compl
+  
+# MODULES 
+  DebugMode: true
+  CombineRefs: true
+  AlignAndVarCall: true
+  AnnotateVariants: true
+  Summarize: true
