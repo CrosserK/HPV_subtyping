@@ -18,6 +18,7 @@ while [[ "$#" -gt 0 ]]; do
 		-s|--TopRunName) TopRunName="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -m|--mainf) MainF="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -v|--virdb) VirStrain_db="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
+        -c|--prevcall) prevCall="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -t|--typetier) typeTier="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -g|--typetop) typeTop="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -r|--typerank) typeRank="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
@@ -51,31 +52,56 @@ cd ~/VirStrain
 python /home/pato/VirStrain/VirStrain.py -i $FQAddr -d $VirStrain_db -o $VirSOut 
 cd
 
-# Print top n. 
-for (( lineN=1; lineN<=$typeTop; lineN++ ))
-do 
-    grabLine=$(expr $lineN + 1) #  (1. line is header in report)
-    foundType="$(grep -A10 Top10_Score_Strains ${VirSOut}/VirStrain_report.txt | awk -v a=$grabLine 'FNR == a {print $1}' | awk 'sub(/^>/, "")')"
-    echo $foundType >> $virOutFile
-    echo $foundType >> $splitOut
+# Print top n, if VirStrain found anything
+if [ -f ${VirSOut}/VirStrain_report.txt ];
+then
 
-    # also sending to file where they are merged to one line by '_'
-    if [ -f $mergedOut ]
-    then
-        old=$(awk 'FNR == 1 {print $1}' $mergedOut)
-        echo "$old"_"$foundType" > $mergedOut
-    else
-        echo $foundType > $mergedOut
-    fi
+    for (( lineN=1; lineN<=$typeTop; lineN++ ))
+    do 
+        grabLine=$(expr $lineN + 1) #  (1. line is header in report)
+        foundType="$(grep -A10 Top10_Score_Strains ${VirSOut}/VirStrain_report.txt | awk -v a=$grabLine 'FNR == a {print $1}' | awk 'sub(/^>/, "")')"
+        mapScore="$(grep -A10 Top10_Score_Strains ${VirSOut}/VirStrain_report.txt | awk -v a=$grabLine 'FNR == a {print $4}')"
+        roundMapScore="$(echo "$mapScore" | xargs printf "%.*f\n" 5)"
+        siteCov="$(grep -A10 Top10_Score_Strains ${VirSOut}/VirStrain_report.txt | awk -v a=$grabLine 'FNR == a {print $5}')"
 
-done
+        echo $foundType >> $virOutFile
+        echo $foundType "("$roundMapScore")("$siteCov")" >> ${virOutFile%.txt}_wScore.txt
+        echo $foundType >> $splitOut
+        echo $foundType "("$roundMapScore")("$siteCov")" >> ${virOutFile%.txt}_wScore.txt
+
+        # also sending to file where they are merged to one line by '_'
+        if [ -f $mergedOut ]
+        then
+            old=$(awk 'FNR == 1 {print $1}' $mergedOut)
+            echo "$old"_"$foundType" > $mergedOut
+        else
+            echo $foundType > $mergedOut
+        fi
+
+    done
+else
+    varCheck() {
+        # Checks if variable is defined, else skips loop 
+        if [ -n "${prevCall-}" ]
+        then
+            echo $prevCall > $mergedOut
+            echo $prevCall > $splitOut
+        elif [ "${prevCall+defined}" = defined ]
+        then
+            echo "$FQName - No genotype found" >> $MainF/Results/$TopRunName/Not_genotyped.txt
+        else
+            echo "$FQName - No genotype found" >> $MainF/Results/$TopRunName/Not_genotyped.txt
+        fi
+    }
+    varCheck
+fi
 
 # Save outputs to summary. If typeRank, add the virstrain_db name (it's the overtype)
 if [[ -v typeRank ]]
 then
     BaseDBName=$(basename $VirStrain_db _VirStrainDB)
-    echo -e $FQName '\t' $BaseDBName '\t' "$(mapfile -t < $virOutFile; printf '%s\t' "${MAPFILE[@]}")" >> $MainF/Results/$TopRunName/TypeCallSummary_T${typeTier}.txt
+    echo -e $FQName '\t' $BaseDBName '\t' "$(mapfile -t < ${virOutFile%.txt}_wScore.txt; printf '%s\t' "${MAPFILE[@]}")" >> $MainF/Results/$TopRunName/TypeCallSummary_T${typeTier}.txt
 else
-    echo -e $FQName '\t' "$(mapfile -t < $virOutFile; printf '%s\t' "${MAPFILE[@]}")" >> $MainF/Results/$TopRunName/TypeCallSummary_T${typeTier}.txt
+    echo -e $FQName '\t' "$(mapfile -t < ${virOutFile%.txt}_wScore.txt; printf '%s\t' "${MAPFILE[@]}")" >> $MainF/Results/$TopRunName/TypeCallSummary_T${typeTier}.txt
 fi
 
