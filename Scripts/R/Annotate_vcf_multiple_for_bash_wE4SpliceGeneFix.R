@@ -16,19 +16,19 @@ suppressMessages(library(dplyr))
 # Henter variabler fra commandline argumenter
 MainF <- as.character(commandArgs(TRUE)[1])
 SaveDir <- as.character(commandArgs(TRUE)[2])
-SuperRunName <- as.character(commandArgs(TRUE)[3])
+TopRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
 typeTier <- as.character(commandArgs(TRUE)[5])
 
-# MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# SaveDir <- "/home/pato/Skrivebord/HPV_subtyping/Annotation_results"
-# SuperRunName <- "HPV16_panel_Sara_Opsaet_11A_830_1321_31102022"
-# MultiFQfile <- "/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_HPV16_panel_Sara_Opsaet_11A_830_1321_31102022.txt"
-# typeTier <- "2"
+#MainF <- "/home/pato/Skrivebord/HPV_subtyping"
+#SaveDir <- "/home/pato/Skrivebord/HPV_subtyping/Results/HPV16_panel_Sara_Opsaet_11A_830_1340_07112022"
+#TopRunName <- "HPV16_panel_Sara_Opsaet_11A_830_1340_07112022"
+#MultiFQfile <- "/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_HPV16_panel_Sara_Opsaet_11A_830_1340_07112022.txt"
+#typeTier <- "2"
 
 print(MainF)
 print(SaveDir)
-print(SuperRunName)
+print(TopRunName)
 print(MultiFQfile)
 print(typeTier)
 
@@ -56,12 +56,12 @@ counter <- 0
 noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
-  #Fastqname <- MultiFastqList[2]
+  #Fastqname <- MultiFastqList[1]
   Fastqname <- tools::file_path_sans_ext(basename(Fastqname)) # Getting fastqname without path and ext
   # Checking if there's split bamfiles because of multple HPV types in one fastq
-  RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,"_T",typeTier,"_SplitTo.txt", sep = "")))
+  RevReferences <- try(read.table(paste(MainF,"/Results/",TopRunName,"/",Fastqname,"/TypeCalls/",Fastqname,"_T",typeTier,"_R1_SplitTo.txt", sep = "")))
   if("try-error" %in% class(RevReferences)){
-    RevReferences <- try(read.table(paste(MainF,"/GenotypeCalls/",SuperRunName,"/",Fastqname,"_T",typeTier,".txt", sep = "")))
+    RevReferences <- try(read.table(paste(MainF,"/Results/",TopRunName,"/",Fastqname,"/TypeCalls/",Fastqname,"_T",typeTier,"_R1.txt", sep = "")))
     # If no reference (no type found) for fastq, go to next fastq
     if("try-error" %in% class(RevReferences)){
       next
@@ -79,10 +79,10 @@ for(Fastqname in MultiFastqList){
     # Enables checking which rank the reference has from  VirStrain, or given reference list
     # CallPrio <- which(RevReferences %in% RevReferences[RRef,]) 
     Refname <- RevReferences[RRef,]
-    Folder <- paste(MainF,"/Results/",SuperRunName,"/", Fastqname,"/",Refname,"/", sep="")
+    Folder <- paste(MainF,"/Results/",TopRunName,"/", Fastqname,"/",Refname,"/ResultFiles/", sep="")
     # Checking if there is any vcf in the ref folder (if not, probably nothing found in bamsplit)
     
-    vcfname <- paste(Fastqname,"_", Refname,".sort.readGroupFix_filtered_FiltEx_headerfix.vcf", sep = "")  # Here can be declared if dup file should be used (.dup.)
+    vcfname <- paste(Fastqname,"_", Refname,".vcf", sep = "")  # Here can be declared if dup file should be used (.dup.)
     gffname <- paste(Refname,".gff3", sep ="")
     gfffile <- paste(GFFFolder, gffname, sep ="")
     print(paste("Using GFF",gffname,"for",Fastqname,sep=" "))
@@ -94,6 +94,18 @@ for(Fastqname in MultiFastqList){
     # Error check for om der er en filtreret vcf fil tilgængelig
     vcffile <- paste(Folder, vcfname, sep ="")
     c_vcf <- try(readVcf(vcffile)) # læser som collapsed vcf
+    # Check that there is variants in the vcf file, else go to next reference
+    
+    if(length(dim(c_vcf))>1){
+      if(dim(c_vcf)[1] < 1){
+        noelement <- noelement + 1
+        next
+      }
+    } else {
+      noelement <- noelement + 1
+      next
+    }
+    
     if("try-error" %in% class(c_vcf)){
       novcfcounter <- novcfcounter + 1
       AnnoRdy <- data.frame(matrix(ncol = 1, nrow = 1))
@@ -534,15 +546,14 @@ for(Fastqname in MultiFastqList){
   }
 }
 
-  
 # Find each unique instance of change:
-Fredf <- table(newdf)
 # Tester om der er nogen elementer
-if(nrow(Fredf)==0) {
+if(nrow(newdf)==0) {
   Frequency <- data.frame(matrix(ncol=1,nrow=0))
   Fredf <- data.frame(matrix(ncol=1,nrow=0))
   df <- data.frame(matrix(ncol=1,nrow=0))
 } else {
+  Fredf <- table(newdf)
   Fredf <- as.data.frame(Fredf)
   # Splitting data table into separate columns
   Fredf <- separate(Fredf, col = 1, sep = "_", extra = "merge", into = c("Change", "GENEID&REF"), fill = "right") # Extra = merge sørger for at _ efter det første ikke bliver splittet
@@ -562,32 +573,35 @@ for(cRef in Refs){
   NucChangePos <- as.numeric(NucChangePos)
   df <- as.vector(as.matrix(NucChangePos))
   df <- data.frame(Reference = cRef, Pos = NucChangePos-1, PosEnd = NucChangePos)
-  write.table(df, file = paste(SaveDir, "/",SuperRunName,"_Nuc_change_coords_", cRef, ".bed", sep = ""), row.names = F,col.names = F, quote = F, sep = "\t")
+  write.table(df, file = paste(SaveDir, "/",TopRunName,"_Nuc_change_coords_", cRef, ".bed", sep = ""), row.names = F,col.names = F, quote = F, sep = "\t")
 }
 
-write.table(cFredf, file = paste(SaveDir, "/","ForNoCallScript_",SuperRunName,"_Nuc_change_coords.txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+write.table(Fredf, file = paste(SaveDir, "/","ForNoCallScript_",TopRunName,"_Nuc_change_coords.txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 
 # Laver en pænere opsætning til tabel med individuelle
 RdyDF <- newdf
-for(c in 1:ncol(RdyDF)){
-  for(r in 1:nrow(RdyDF)){
-    if(!is.na(RdyDF[r,c])){
-      if(RdyDF[r,c]!="NoVcfFile"){
-        RdyDF[r,c] <- str_replace_all(RdyDF[r,c], "%", " ")
-        RdyDF[r,c] <- str_replace(RdyDF[r,c], "_", " ")
-        RdyDF[r,c] <- str_remove(RdyDF[r,c], ",")
-        RdyDF[r,c] <- paste("c.",RdyDF[r,c], sep ="")
-        RdyDF[r,c] <- str_remove(RdyDF[r,c], "c.NA")
-      } 
+if(length(RdyDF > 0)){
+  for(c in 1:ncol(RdyDF)){
+    for(r in 1:nrow(RdyDF)){
+      if(!is.na(RdyDF[r,c])){
+        if(RdyDF[r,c]!="NoVcfFile"){
+          RdyDF[r,c] <- str_replace_all(RdyDF[r,c], "%", " ")
+          RdyDF[r,c] <- str_replace(RdyDF[r,c], "_", " ")
+          RdyDF[r,c] <- str_remove(RdyDF[r,c], ",")
+          RdyDF[r,c] <- paste("c.",RdyDF[r,c], sep ="")
+          RdyDF[r,c] <- str_remove(RdyDF[r,c], "c.NA")
+        } 
+      }
     }
   }
+  RdyDF <- as.data.frame(RdyDF)
+  
+  # Fjerner tomme kolonner
+  #RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
+  
+  write.table(RdyDF, file = paste(SaveDir, "/", "AnnotationIndividualFiles_",TopRunName,".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+  
+} else {
+  print("No variants found")
 }
-
-
-RdyDF <- as.data.frame(RdyDF)
-
-# Fjerner tomme kolonner
-#RdyDF <- RdyDF[, colSums(RdyDF != "") != 0, drop = F] # drop = F sørger for at dataframe ikke taber kolonnenavne ved subsetting
-
-write.table(RdyDF, file = paste(SaveDir, "/", "AnnotationIndividualFiles_",SuperRunName,".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
 

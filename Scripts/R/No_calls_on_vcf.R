@@ -7,23 +7,23 @@ suppressMessages(library(dplyr))
 ##TEST
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
 # SaveDir <- "/home/pato/Skrivebord/HPV_subtyping/Annotation_results"
-# SuperRunName <- "Karoline_run_covGenTest_0859_07072021"
-# MultiFQfile <- paste("FASTQfiles_", SuperRunName, sep = "")
+# TopRunName <- "Karoline_run_covGenTest_0859_07072021"
+# MultiFQfile <- paste("FASTQfiles_", TopRunName, sep = "")
 #####
 
 MainF <- as.character(commandArgs(TRUE)[1])
 SaveDir <- as.character(commandArgs(TRUE)[2])
-SuperRunName <- as.character(commandArgs(TRUE)[3])
+TopRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
 
 # Finder hver reference der er lavet data på skal der nu tjekkes om fastqfiler som er blevet alignet til reference også har dækning på position med snv
-Refs <- list.files(path = SaveDir, pattern = paste(SuperRunName, "_Nuc_change_coords_", sep =""))
+Refs <- list.files(path = SaveDir, pattern = paste(TopRunName, "_Nuc_change_coords_", sep =""))
 
-Refs <- str_remove(Refs, paste(SuperRunName, "_Nuc_change_coords_", sep =""))
+Refs <- str_remove(Refs, paste(TopRunName, "_Nuc_change_coords_", sep =""))
 Refs <- str_remove(Refs, ".bed")
 # Har nu cuttet ned til referencer
 # Loader ForNoCallScript fil
-NoCalls <- read.table(paste(SaveDir,"/","ForNoCallScript_",SuperRunName,"_Nuc_change_coords.txt", sep = ""), header = T)
+NoCalls <- read.table(paste(SaveDir,"/","ForNoCallScript_",TopRunName,"_Nuc_change_coords.txt", sep = ""), header = T)
 # Laver nu no calls til hver reference
 for(Refname in Refs){
   
@@ -54,13 +54,13 @@ for(Refname in Refs){
     Fastqname <- tools::file_path_sans_ext(basename(Fastqname)) # Getting fastqname without path and ext
    
     # Tjekker om fastqfil er blevet alignet til nuværende reference:
-    if(file.exists(paste(MainF,"/Results/",SuperRunName,"/", Fastqname,"/",Refname,"/ResultFiles/SNP_cov.txt", sep="")) == FALSE){
+    if(file.exists(paste(MainF,"/Results/",TopRunName,"/", Fastqname,"/",Refname,"/ResultFiles/SNP_cov.txt", sep="")) == FALSE){
       next
     } else {
       print("Checking")
     }
     
-    Folder <- paste(MainF,"/Results/",SuperRunName,"/", Fastqname,"/",Refname,"/ResultFiles/", sep="")
+    Folder <- paste(MainF,"/Results/",TopRunName,"/", Fastqname,"/",Refname,"/ResultFiles/", sep="")
     
     # Hopper til næste iteration i loop, hvis ingen SNP_cov fil (Da der så ikke er blevet alignet til nuværende reference med nuværende fastqfil)
     SNP_cov_File <- try(read.table(paste(Folder,"SNP_cov.txt", sep ="")))
@@ -94,16 +94,15 @@ for(Refname in Refs){
   Anno_freq[,"NucChange"] <- as.data.frame(paste("c.",Anno_freq$NucPos, Anno_freq$NucChange, sep = ""))
   Anno_freq <- Anno_freq[,!names(Anno_freq) %in% "NucPos"]
   # Laver annotation info filer:
-  write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",SuperRunName, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+  write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",TopRunName, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
   #file.remove(paste(SaveDir,"/","ForNoCallScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""))
 }
 
-fn <- paste(SaveDir, "/","ForNoCallScript_",SuperRunName,"_Nuc_change_coords.txt", sep = "")
+fn <- paste(SaveDir, "/","ForNoCallScript_",TopRunName,"_Nuc_change_coords.txt", sep = "")
 
-# fjerner NoCallFile fra annoscript
-if (file.exists(fn)) {
-  #Delete file if it exists
-  file.remove(fn)
-}
+# Delete NoCallFile
+#if (file.exists(fn)) {
+#  file.remove(fn)
+#}
 print("Summaries done")
 
