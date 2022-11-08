@@ -1,47 +1,30 @@
-# To start program, open terminal from the folder with FindHPVMutations.sh 
-# (right click somewhere in the folder and click Open in Terminal)
-# Then drag FindHPVMutations.sh into the terminal and press enter.
-
 # NAMING
   RunName: HPV16_panel_Sara_Opsaet_11A_830
-  
-  # For debugging, or continuing halted run:
-  customName: true
-  cName: HPV16_panel_Sara_Opsaet_11A_830_1412_02112022
+  startPreviousRun: false
   
 # QUALITY FILTERING
-  qualityFilt: false
+  qualityFilt: true
   QualTrim: 20
   MinLen: 50
   MaxLen: 320
 
 # GENO AND SUBTYPING
-  # Choose only one GenoTyping (or none if inserted manually in InputRefs folder):
   CovMatrixGenoTyping: false
-  VirStrainGenoTyping: false
-  VirStrainSubTyping: false
-  # Set how many found types to use. I.e. use top 3 best found genotypes.
-  GenoTypingTop: 1
-  SubTypingTop: 1
-  # VirStrain database paths
+  VirStrainGenoTyping: true
+  VirStrainSubTyping: true
+  VirSGenoTypingTop: 2
+  VirSSubTypingTop: 3
   VirStrainMaindb: Combined_mainlines_wRevised_wHPV-mTypes
   VirStrainSubFolders: VirStrainDBs_HPV_sub
  
 # REFERENCES
-  # If database includes new references, set to true:
   indexReferences: false 
-  # If using one reference only, disable genotyping or subtyping as necessary
-  customRefForAll: false
-  cRef: HPV16_K02718_1_revised
-
-# AMPLICONCUT (Only one ampliconref currently possible)
-  cutOutsideAmplicons: false 
-  AmpliconRef: K02718.1
-  BedFileNameX: IAD209923_226_Designed_compl
-  
+  sameRefForAll: false
+  sRef: HPV16_K02718_1_revised
+ 
 # MODULES 
   DebugMode: true
   CombineRefs: true
-  AlignAndVarCall: true
+  AlignAndVariantCall: true
   AnnotateVariants: true
   Summarize: true
