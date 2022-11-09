@@ -29,6 +29,7 @@ FQName=$(basename ${FastQFile} .fastq)
 
 # Define locations
 QCF=$MainF/QC; 
+LogF=$QCF/Logs
 RefF=$MainF/References; 
 ResultsF=$MainF/Results/$TopRunName	
 
@@ -43,6 +44,8 @@ currentF=$workD/"$Reference"
 mkdir -p $currentF/ResultFiles/
 Ref_FASTA=$RefF/IndexedRef/"${Reference}"/"${Reference}".fasta # Find reference for picard
 echo Calling variants with reference ${Ref_FASTA##*/}
+echo [$(date +"%d-%m-%Y %H:%M:%S")] Calling variants with reference ${Ref_FASTA##*/} >> $LogF/${TopRunName}.txt
+
 
 # Splitting bamfile in the two 2 amplicon pools, if ref = ampliconref:
 if [ "$Reference" == "$AmpliconRef" ]; 

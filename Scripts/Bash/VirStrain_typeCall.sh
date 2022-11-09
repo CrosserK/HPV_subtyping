@@ -65,7 +65,6 @@ then
         siteCov="$(grep -A10 Top10_Score_Strains ${VirSOut}/VirStrain_report.txt | awk -v a=$grabLine 'FNR == a {print $5}')"
 
         echo $foundType >> $virOutFile
-        echo $foundType "("$roundMapScore")("$siteCov")" >> ${virOutFile%.txt}_wScore.txt
         echo $foundType >> $splitOut
         echo $foundType "("$roundMapScore")("$siteCov")" >> ${virOutFile%.txt}_wScore.txt
 
@@ -81,7 +80,7 @@ then
     done
 else
     varCheck() {
-        # Checks if variable is defined, else skips loop 
+        # Checks if variable is defined. If, set subtype to geontype, else skips loop 
         if [ -n "${prevCall-}" ]
         then
             echo $prevCall > $mergedOut

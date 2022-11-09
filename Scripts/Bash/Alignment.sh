@@ -31,11 +31,13 @@ FQName=$(basename ${FastQFile} .fastq)
 QCF=$MainF/QC; 
 RefF=$MainF/References; 
 LogF=$QCF/Logs;
+IdxF=$QCF/Indexing
 FlagF=$QCF/Flagstats;
 ResultsF=$MainF/Results/$TopRunName	
 ###################### Find genotypecall ref ##########################
 
 echo -e "Using reference" "$Reference" for $FQName
+echo [$(date +"%d-%m-%Y %H:%M:%S")] "Using reference" "$Reference" for $FQName >> $LogF/${TopRunName}.txt
 
 mkdir -p $ResultsF/$FQName
 workD=$ResultsF/$FQName
@@ -45,6 +47,7 @@ mkdir -p "$currentF"/ResultFiles
 
 Ref_FASTA=$RefF/IndexedRef/"${Reference}"/"${Reference}".fasta # Find reference for picard
 echo Aligning with reference ${Ref_FASTA##*/}
+echo [$(date +"%d-%m-%Y %H:%M:%S")] Aligning with reference "${Ref_FASTA##*/}" >> $LogF/${TopRunName}.txt
 BamFile=$currentF/${Reference}.bam
 
 # Aligner
@@ -53,10 +56,10 @@ bwa mem -t 12 -v 2 -M "$Ref_FASTA" $FastQFile > "${BamFile%bam}"sam # -v = verbo
 samtools sort "${BamFile%bam}"sam -o "${BamFile%bam}"sort.bam 
 
 java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup.bam \
--M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $LogF/markdup_log_"${Reference}".txt
+-M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES false 2> $IdxF/markdup_log_"${Reference}".txt
 
 java -Xmx28G -jar ~/picard.jar MarkDuplicates -I "${BamFile%bam}"sort.bam -O "${BamFile%bam}"sort.dup_rm.bam \
--M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $LogF/markdup_log_"${Reference}".txt
+-M "${BamFile%.bam}"_DupMetrics.txt -REMOVE_DUPLICATES true 2> $IdxF/markdup_log_"${Reference}".txt
 
 # Rename & index nodupmarked file
 samtools index "${BamFile%bam}"sort.bam 
