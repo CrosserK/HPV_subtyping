@@ -20,7 +20,7 @@ Workflow to get from FASTQ files to calling the HPV geno- and subtype, given ref
 6. Hard filter variants with vcf_filter.sh (GATK VariantFiltration) according to chosen filters
 7. Remove filtered variants from vcf with vcf_filt_ex.sh (GATK SelectVariants --exclude-filtered)
 8. Find number of mismatches in vcf files
-9. Find most likely subtype with Viral strain caller (Not chosen yet)
+9. Find most likely subtype with VirStrain (https://github.com/liaoherui/VirStrain)
 10. Compare Viral strain caller results with number of mismatches from vcf
 11. Find amino acid changes with annotate_vcf.R
     1. Prepare gff3 file with GenomicFeatures library -> makeTxDbFromGFF
