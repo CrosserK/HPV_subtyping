@@ -66,20 +66,26 @@ else
 	echo "Starting previous run and using saved fastq info..."
 fi
 
+
 # Create needed folders
-mkdir -p $MainF/{References/{IndexedRef,Combined_refs},Results/$TopRunName/,FASTQ,QC/{Flagstats,Logs}}  
+mkdir -p $MainF/{References/{IndexedRef,Combined_refs},Results/$TopRunName/,FASTQ,QC/{Flagstats,Logs,MarkDup,Indexing}}  
 
 # Defining locations
 FQList=$FQF/FASTQfiles_${TopRunName}.txt
 QCF=$MainF/QC; 
 RefF=$MainF/References; 
-LogF=$QCF/Logs; 
+LogF=$QCF/Logs;
+IdxF=$QCF/Indexing; 
 InputRefs=$RefF/InputRefs;
 Rscriptfolder=$MainF/Scripts/R;
 BashScriptF=$MainF/Scripts/Bash;
 PythonScriptF=$MainF/Scripts/Python;
 ResultsF=$MainF/Results/$TopRunName;
 
+# Clear previous logs
+find $QCF -type f -delete
+
+echo [$(date +"%d-%m-%Y %H:%M:%S")] "Starting FindHPVMutations program..." >> $LogF/${TopRunName}.txt
 # Set number of loops from FQList. Paths will be gathered from FQlist file
 FQListLen=$(awk 'END{print NR}' $FQList)
 
@@ -88,6 +94,7 @@ FQListLen=$(awk 'END{print NR}' $FQList)
 ########### FASTQ FILTRERING ###########
 if [ $qualityFilt = true ]; then
 	# One by one, filter with cutadapt
+	echo [$(date +"%d-%m-%Y %H:%M:%S")] "Filtering fastq files..." >> $LogF/${TopRunName}.txt
 	for (( FQNum=1; FQNum<=$FQListLen; FQNum++ )); 
 	do
 		FQAddr=$(awk "NR==$FQNum" $FQList)
@@ -101,7 +108,7 @@ if [ $qualityFilt = true ]; then
 	find $FQF/${TopRunName}_filtered/ -maxdepth 1 -name '*.fastq' \
 	> $FQF/FASTQfiles_${TopRunName}.txt  
 	FQF=$FQF/${TopRunName}_filtered
-	echo Done filtering fastq files
+	echo [$(date +"%d-%m-%Y %H:%M:%S")] Done filtering fastq files >> $LogF/${TopRunName}.txt
 fi
 
 ########### REFERENCE INDEXING OF ALL AVAILABLE REFERENCES ###########
@@ -116,7 +123,7 @@ then
 
 		# Samtools indexing
 		if [ -f $RefF/IndexedRef/${RefName%.fasta}/${RefName} ]; then
-			echo $RefName already in IndexedRef folder
+			echo [$(date +"%d-%m-%Y %H:%M:%S")] $RefName already in IndexedRef folder >> $LogF/${TopRunName}.txt
 		else
 			cp $f $RefF/IndexedRef/${RefName%.fasta}/$RefName
 			Ref_FASTA=$RefF/IndexedRef/${RefName%.fasta}/$RefName
@@ -125,7 +132,7 @@ then
 		if [ ! -f ${Ref_FASTA%.fasta}.dict ]; then
 			java -jar ~/picard.jar CreateSequenceDictionary \
 			R=$Ref_FASTA \
-			O=${Ref_FASTA%.fasta}.dict 2> $LogF/CreateSequenceDictionary_log_${refType}.txt
+			O=${Ref_FASTA%.fasta}.dict 2> $IdxF/CreateSequenceDictionary_log_${refType}.txt
 		fi
 		# BWA indexing
 		bwa index $Ref_FASTA
@@ -170,8 +177,10 @@ then
 		FQAddr=$(awk "NR==$FQNum" $FQList)
 		FQName=$(basename $FQAddr .fastq)
 		echo Genotyping $FQName
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] Genotyping $FQName >> $LogF/${TopRunName}.txt
 		"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -t ${typeTier} -g "$VirSGenoTypingTop"
 		echo "$FQNum of $FQListLen done"
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen done" >> $LogF/${TopRunName}.txt
 	done
 fi
 
@@ -204,29 +213,21 @@ do
 	do
 		VirStrainSub=$(sed -n "${genonum}"p "$MainCallFile" | grep -o "^HPV[0-9]*") # -o to only output match
 		prevCall=$(sed -n "${genonum}"p "$MainCallFile" | grep "^HPV[0-9]*" | awk '{print $1}')
-		# varCheck() {
-		# 	# Checks if variable is defined, else skips loop 
-		# 	if [ -n "${prevCall-}" ]
-		# 	then
-		# 		echo passing
-		# 		:
-		# 	elif [ "${prevCall+defined}" = defined ]
-		# 	then
-		# 		continue
-		# 	else
-		# 		continue
-		# 	fi
-		# }
-		#varCheck
+		# Avoid edge cases where HPV is not named HPV[0-9]*, but like HPV-[A-Z]. These are not integrated into the pipeline yet (such as HPV-mSK008_MH777156_2)
+		if [ $VirStrainSub = HPV ]; then
+			continue
+		fi
 		echo Finding $VirStrainSub subtype for ${FQName}...
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "Finding $VirStrainSub subtype for ${FQName}..." >> $LogF/${TopRunName}.txt
 		BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
 		VSdb=$MainF/References/$VirStrainSubFolders/$BaseDBName # VirStrainSubFolders comes from Configurations.yaml file
-		echo "${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r "$genonum"
 		"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r "$genonum"
-		echo "$FQNum of $FQListLen done"
+		echo "$FQNum of $FQListLen "done""
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
 	done
 done
 fi
+
 
 # ########### Combining references and/or saving in genotypecalls folder ###########
 if [ $CombineRefs = true ]; 
@@ -250,7 +251,6 @@ then
 			declare -a AllAddressList="" 
 			for ref in ${RefsArr[@]}; do
 				# Find ref path and append to list
-				echo $ref
 				AllAddressList+=" "
 				AllAddressList+=$( find $RefF -maxdepth 1  -name "${ref}*" -type f )
 			done
@@ -259,7 +259,7 @@ then
 			newRefName=${newRefName:1} # Removes wrong prefix of "_" from above method
 			newRefNameFasta=${newRefName}.fasta
 			# Collect the fastas to one file and index, if it does not exist
-			if [ ! -f $RefF/Combined_refs/$newRefNameFasta ];
+			if [ ! -f $RefF/Combined_refs/${newRefName}.dict ];
 			then
 				cat $AllAddressList > $RefF/Combined_refs/$newRefNameFasta
 				# Index and save in IndexedRefs folder
@@ -268,17 +268,25 @@ then
 				mkdir -p $RefF/IndexedRef/${RefName%.fasta}
 				cp $NewRef $RefF/IndexedRef/${RefName%.fasta}/$RefName
 				Ref_FASTA=$RefF/IndexedRef/${RefName%.fasta}/$RefName
-				# Create sequence dictionary for gatk haplotypecaller
-				java -jar ~/picard.jar CreateSequenceDictionary \
-				R=$Ref_FASTA \
-				O="${Ref_FASTA%.fasta}".dict 2> "$LogF"/CreateSequenceDictionary_log_"${RefName}".txt
-				# Create index for bwa mem
-				bwa index $Ref_FASTA
-				# Index with samtools faidx
-				samtools faidx $Ref_FASTA
+				# Avoiding if there is only one ref and it is already indexed
+				if [ ! -f "${Ref_FASTA%.fasta}".dict ]; then
+
+					# Create sequence dictionary for gatk haplotypecaller
+					java -jar ~/picard.jar CreateSequenceDictionary \
+					R=$Ref_FASTA \
+					O="${Ref_FASTA%.fasta}".dict 2> "$IdxF"/CreateSequenceDictionary_log_"${RefName}".txt
+					# Create index for bwa mem
+					bwa index $Ref_FASTA
+					# Index with samtools faidx
+
+					samtools faidx $Ref_FASTA
+				fi
 			fi
+
 		fi
+
 	done
+	echo passed cr loop
 fi
 
 
@@ -302,7 +310,8 @@ then
 			Reference=$(awk "NR==1" $GenoTypeCallFile)
 			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
 			echo File $FQName with $Reference "done" with MERGED file alignment... 
-			
+			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with MERGED file alignment... " >> $LogF/${TopRunName}.txt
+
 			#  Get merged ref name
 			MergedRef=$(< $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}.txt)
 			EndRefs=$(awk 'END{print NR}' $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt)
@@ -331,9 +340,10 @@ then
 						SplitBam=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
 
 						#  Variant filtrering, indexing and sorting
-						echo -f $FQName -s $TopRunName -m $MainF -b $SplitBam -t $typeTier -r $typeRank -l $currentRef
 						"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a "ampliconRefPlaceholder"
 						echo File $FQName with $Reference "done" with split file variant call...
+						echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with split file variant call..." >> $LogF/${TopRunName}.txt
+
 					fi
 
 					if [ -f $SplitBamUn ]; 
@@ -349,7 +359,7 @@ then
 				Reference=$(awk "NR==1" $GenoTypeCallFile)
 				"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
 				"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
-				
+
 				# Variant call
 				workD=$ResultsF/$FQName
 				currentF=$workD/$Reference
@@ -357,8 +367,12 @@ then
 				BamFile="${BamFile%bam}"sort.bam
 				"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
 				echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
+				echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
+
 			fi
 		echo $FQName "done" with split calls... $FQNum of $FQListLen fastq files
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQName "done" with split calls... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
+
 		else
 			# Align without splits
 	 		GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
@@ -372,6 +386,8 @@ then
 			BamFile="${BamFile%bam}"sort.bam
 			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
 	 		echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
+			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
+
 		fi
 	done
 fi
@@ -412,13 +428,14 @@ done
 if [ $AnnotateVariants = true ]; then
 	typeTier=2
 	# Script gets fastq files from MultiFQName
+	echo [$(date +"%d-%m-%Y %H:%M:%S")] Annotating variants... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_wE4SpliceGeneFix.R $MainF $ResultsF $TopRunName $FQList $typeTier
 	# Fix For No call script, hvor multiple aminosyrer ændringer vises med ", " og ændrer til ","
 	sed -i 's/,\s/,/g' $ResultsF/ForNoCallScript_${TopRunName}_Nuc_change_coords.txt
 fi
 
 
-# ########### No_calls script ###########
+# ########### Summarizing variant results ###########
 if [ $Summarize = true ]; then
 
 	# Laver 1 fil med alle mulige referencer til No_call_script
@@ -426,6 +443,7 @@ if [ $Summarize = true ]; then
 	#sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt
 
 	#if [ -d $ResultsF/$FQName/$refType ]; then
+	echo [$(date +"%d-%m-%Y %H:%M:%S")] Summarizing variant results... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF $ResultsF $TopRunName $FQList
 	# [SaveDir] [ReferenceName] [TopRunName] [ListOfFastqFiles]
 
@@ -441,6 +459,8 @@ if [ $Summarize = true ]; then
 	else
 		rm $ResultsF/ForNoCallScript_*.txt
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "No variants found in this run" >> $LogF/${TopRunName}.txt
+
 	fi
 fi
 
@@ -450,11 +470,11 @@ then
 	if [ ${#RunName} -gt 0 ] && [ ${#MainF} -gt 0 ]; 
 	then
 		rm $FQList
-		rm -r $FQF/${RunName}_filtered
-		rm Annotation_results/*.bed Annotation_results/*.txt 
+		rm -r Annotation_results/*.bed Annotation_results/*.txt 
 		rm -r $MainF/GenotypeCalls/${RunName}*
 		rm -r $MainF/VirStrain_run/${RunName}*
 	fi
 fi
 
+echo [$(date +"%d-%m-%Y %H:%M:%S")] "FindHPVMutations done." >> $LogF/${TopRunName}.txt
 #  You reached the end :)

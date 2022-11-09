@@ -23,7 +23,7 @@
   sRef: HPV16_K02718_1_revised
  
 # MODULES 
-  DebugMode: true
+  DebugMode: false
   CombineRefs: true
   AlignAndVariantCall: true
   AnnotateVariants: true
