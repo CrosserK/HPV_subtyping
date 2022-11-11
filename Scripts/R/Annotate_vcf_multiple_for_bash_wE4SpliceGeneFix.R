@@ -19,18 +19,20 @@ SaveDir <- as.character(commandArgs(TRUE)[2])
 TopRunName <- as.character(commandArgs(TRUE)[3])
 MultiFQfile <- as.character(commandArgs(TRUE)[4])
 typeTier <- as.character(commandArgs(TRUE)[5])
+LogFile <- paste(MainF,"/QC/Logs/",TopRunName,".txt", sep = "")
 
-#MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-#SaveDir <- "/home/pato/Skrivebord/HPV_subtyping/Results/HPV16_panel_Sara_Opsaet_11A_830_1340_07112022"
-#TopRunName <- "HPV16_panel_Sara_Opsaet_11A_830_1340_07112022"
-#MultiFQfile <- "/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_HPV16_panel_Sara_Opsaet_11A_830_1340_07112022.txt"
-#typeTier <- "2"
 
-print(MainF)
-print(SaveDir)
-print(TopRunName)
-print(MultiFQfile)
-print(typeTier)
+# MainF <- "/home/pato/Skrivebord/HPV_subtyping"
+# SaveDir <- "/home/pato/Skrivebord/HPV_subtyping/Results/HPV16_panel_Sara_Opsaet_11A_830_1519_09112022"
+# TopRunName <- "HPV16_panel_Sara_Opsaet_11A_830_1519_09112022"
+# MultiFQfile <- "/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_HPV16_panel_Sara_Opsaet_11A_830_1519_09112022.txt"
+# typeTier <- "2"
+
+# print(MainF)
+# print(SaveDir)
+# print(TopRunName)
+# print(MultiFQfile)
+# print(typeTier)
 
 # Define function that enables columns of different length to be bound to each other, by filling shorter columns with "NA"
 cbind.fill <- function(...){
@@ -56,7 +58,7 @@ counter <- 0
 noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
-  #Fastqname <- MultiFastqList[1]
+  #Fastqname <- MultiFastqList[9]
   Fastqname <- tools::file_path_sans_ext(basename(Fastqname)) # Getting fastqname without path and ext
   # Checking if there's split bamfiles because of multple HPV types in one fastq
   RevReferences <- try(read.table(paste(MainF,"/Results/",TopRunName,"/",Fastqname,"/TypeCalls/",Fastqname,"_T",typeTier,"_R1_SplitTo.txt", sep = "")))
@@ -82,7 +84,7 @@ for(Fastqname in MultiFastqList){
     Folder <- paste(MainF,"/Results/",TopRunName,"/", Fastqname,"/",Refname,"/ResultFiles/", sep="")
     # Checking if there is any vcf in the ref folder (if not, probably nothing found in bamsplit)
     
-    vcfname <- paste(Fastqname,"_", Refname,".vcf", sep = "")  # Here can be declared if dup file should be used (.dup.)
+    vcfname <- paste(Fastqname,"_", Refname,"_filt.vcf", sep = "")  # Here can be declared if dup file should be used (.dup.)
     gffname <- paste(Refname,".gff3", sep ="")
     gfffile <- paste(GFFFolder, gffname, sep ="")
     print(paste("Using GFF",gffname,"for",Fastqname,sep=" "))
@@ -144,7 +146,14 @@ for(Fastqname in MultiFastqList){
     
     # Finder splice koordinater
     print(paste("Using splice file",splfile))
-    txdb <- makeTxDbFromGFF(splfile, format = "gff3")
+    txdb <- try(makeTxDbFromGFF(splfile, format = "gff3"))
+    if("try-error" %in% class(txdb)){
+      AnnoRdy <- data.frame(matrix(ncol = 1, nrow = 1))
+      colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = "_")
+      AnnoRdy[1] <- "E4 fix GFF3 does not exist or is corrupt"
+      newdf <- cbind.fill(newdf, AnnoRdy)
+      next
+    }
     txseq <- extractTranscriptSeqs(faf,cdsBy(txdb, by="tx", use.names=TRUE))
     translated <- suppressWarnings(Biostrings::translate(txseq))
     gffDF <- as.data.frame(VariantAnnotation::select(txdb, column=columns(txdb), keys="E4_splice", keytype=("GENEID")))  # Fanger gff fil info for at hente koordinater på splicetranskript
@@ -546,6 +555,13 @@ for(Fastqname in MultiFastqList){
   }
 }
 
+# For log
+text1 <- paste("Number of vcf files with no variants: ", noelement)
+text2 <- paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter)
+write.table(text1, file = LogFile, append = TRUE, quote = FALSE, sep = "", row.names = FALSE, col.names = FALSE)
+write.table(text2, file = LogFile, append = TRUE, quote = FALSE, sep = "", row.names = FALSE, col.names = FALSE)
+
+
 # Find each unique instance of change:
 # Tester om der er nogen elementer
 if(nrow(newdf)==0) {
@@ -602,6 +618,6 @@ if(length(RdyDF > 0)){
   write.table(RdyDF, file = paste(SaveDir, "/", "AnnotationIndividualFiles_",TopRunName,".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
   
 } else {
-  print("No variants found")
+  print("No variants found. Low coverage?")
 }
 

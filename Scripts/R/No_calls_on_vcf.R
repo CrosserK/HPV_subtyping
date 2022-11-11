@@ -101,8 +101,8 @@ for(Refname in Refs){
 fn <- paste(SaveDir, "/","ForNoCallScript_",TopRunName,"_Nuc_change_coords.txt", sep = "")
 
 # Delete NoCallFile
-#if (file.exists(fn)) {
-#  file.remove(fn)
-#}
+if (file.exists(fn)) {
+ file.remove(fn)
+}
 print("Summaries done")
 
