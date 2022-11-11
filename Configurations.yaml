@@ -1,5 +1,5 @@
 # NAMING
-  RunName: HPV16_panel_Sara_Opsaet_11A_830
+  RunName: Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A
   startPreviousRun: false
   
 # QUALITY FILTERING
@@ -9,8 +9,9 @@
   MaxLen: 320
 
 # GENO AND SUBTYPING
-  CovMatrixGenoTyping: false
-  VirStrainGenoTyping: true
+  CovMatrixGenoTyping: true
+  HouseGeneEndRow: 5
+  VirStrainGenoTyping: false
   VirStrainSubTyping: true
   VirSGenoTypingTop: 2
   VirSSubTypingTop: 3
@@ -23,7 +24,7 @@
   sRef: HPV16_K02718_1_revised
  
 # MODULES 
-  DebugMode: false
+  DebugMode: true
   CombineRefs: true
   AlignAndVariantCall: true
   AnnotateVariants: true

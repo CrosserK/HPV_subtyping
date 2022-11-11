@@ -161,8 +161,14 @@ fi
 if [ $CovMatrixGenoTyping = true ]; then
 	# Setting tier of type level that will be output (etc. genotype = 1, subtype = 2)
 	typeTier=1
-	python $PythonScriptF/autoDetectTypeFromCov.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -t $typeTier
+	python $PythonScriptF/autoDetectTypeFromCov.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -f $FQF -t $typeTier -g $HouseGeneEndRow -l $LogF/${TopRunName}.txt
+	# Integration detection by deletion detection
+	python $PythonScriptF/detectIntegration.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed
 fi
+
+
+
+
 
 
 ########### VIRSTRAIN GENOTYPING ###########
@@ -185,68 +191,43 @@ then
 fi
 
 
-########### VIRSTRAIN SUBTYPING  ###########
-#  Getting correct VirStrain subtypedatabase for genotype
-#  Saving main calls to GenotypeCalls Folder
-if [ $VirStrainSubTyping = true ]; then
-# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
-typeRank=1
-for (( FQNum=1; FQNum<=$FQListLen; FQNum++ ))
-do
-	FQAddr=$(awk "NR==$FQNum" $FQList)
-	FQName=$(basename $FQAddr .fastq)
 
-	typeTier=1
-	MainCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_SplitTo.txt
-	#  Setting typeTier to output by incrementing input typeTier to output typeTier
-	let "typeTier=typeTier+1"
-	#  For each genotype in inputref file, find subtype
-	if [ -f $MainCallFile ]; # Skips fastq if no genotype were found. 
-	then
-		:
-	else
-		continue
-	fi
-
-	genoEnd=$(awk 'END{print NR}' "$MainCallFile")
-	for (( genonum=1; genonum<=$genoEnd; genonum++ )); 
-	do
-		VirStrainSub=$(sed -n "${genonum}"p "$MainCallFile" | grep -o "^HPV[0-9]*") # -o to only output match
-		prevCall=$(sed -n "${genonum}"p "$MainCallFile" | grep "^HPV[0-9]*" | awk '{print $1}')
-		# Avoid edge cases where HPV is not named HPV[0-9]*, but like HPV-[A-Z]. These are not integrated into the pipeline yet (such as HPV-mSK008_MH777156_2)
-		if [ $VirStrainSub = HPV ]; then
-			continue
-		fi
-		echo Finding $VirStrainSub subtype for ${FQName}...
-		echo [$(date +"%d-%m-%Y %H:%M:%S")] "Finding $VirStrainSub subtype for ${FQName}..." >> $LogF/${TopRunName}.txt
-		BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
-		VSdb=$MainF/References/$VirStrainSubFolders/$BaseDBName # VirStrainSubFolders comes from Configurations.yaml file
-		"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r "$genonum"
-		echo "$FQNum of $FQListLen "done""
-		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
-	done
-done
-fi
-
-
+# Combined ref split before subtyping
 # ########### Combining references and/or saving in genotypecalls folder ###########
-if [ $CombineRefs = true ]; 
+if [ $CombineRefs = true ] && [ $AlignAndVariantCall = true ]; 
 then
-	# Setting tier of type level that will be used (etc. genotype = 1, subtype = 2)
-	typeTier=2
-	# Setting tier of type rank that will be input (if it is best match (1) or 2nd best match (2) etc.)
-	typeRank=1
-	# removing unwanted fai files
+
+
+	# Combine fasta refs. Removing unwanted fai files first.
 	rm -f $RefF/*.fasta.fai
 	for (( FQNum=1; FQNum<=$FQListLen; FQNum++ )); 
 	do
 		FQAddr=$(awk "NR==$FQNum" $FQList)
 		FQName=$(basename $FQAddr .fastq)
+
+		# Setting tier of type level that will be used as input (etc. genotype = 1, subtype = 2)
+		typeTier=1
+		# Setting tier of type rank that will be input (if it is best match = 1, or 2nd best match = 2, etc.)
+		typeRank=1
 		# Finding number of references in reference file
 		# If more than one type in sample, combine reference files (fasta) and save info in GenotypeCalls folder
-		if [ $VirSSubTypingTop -gt 1 ]; then
+		RefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_SplitTo.txt
+		CombRefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}.txt
+		# Checking that file exists, else going to next iteration
+		if [ ! -f $RefFile ]; 
+		then
+			echo [$(date +"%d-%m-%Y %H:%M:%S")] "No genotype file for $FQName" >> $LogF/${TopRunName}.txt
+			continue
+		fi
+
+		RefFileLen=$(awk 'END{print NR}' $RefFile)
+		# If more than one reference found, combine fasta and align to it, then bamsplit and variant call
+		if [ $RefFileLen -gt 1 ]; 
+		then
+
+			#### CREATE COMBINED REFERENCE
 			# Read references as array
-			readarray -t RefsArr < $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
+			readarray -t RefsArr < $RefFile
 			# Initiate array
 			declare -a AllAddressList="" 
 			for ref in ${RefsArr[@]}; do
@@ -254,10 +235,12 @@ then
 				AllAddressList+=" "
 				AllAddressList+=$( find $RefF -maxdepth 1  -name "${ref}*" -type f )
 			done
+
 			# Make new fasta name for combined ref
 			newRefName=$(printf "_%s" "${RefsArr[@]}")
 			newRefName=${newRefName:1} # Removes wrong prefix of "_" from above method
 			newRefNameFasta=${newRefName}.fasta
+
 			# Collect the fastas to one file and index, if it does not exist
 			if [ ! -f $RefF/Combined_refs/${newRefName}.dict ];
 			then
@@ -283,101 +266,111 @@ then
 				fi
 			fi
 
-		fi
+			####### COMBINED REFERENCE CREATED
 
-	done
-	echo passed cr loop
-fi
-
-
-########### ALIGNMENT & VARIANT CALLING (INCL. MERGED REF) ###########
-# This will align each fastq to each of the found types one by one and then to all found types.
-if [ $AlignAndVariantCall = true ]; 
-then 
-	#  Set which type tier to align
-	typeTier=2
-	typeRank=1
-	for (( FQNum=1; FQNum<=$FQListLen; FQNum++ ));
-	do
-		FQAddr=$(awk "NR==$FQNum" $FQList)
-		FQName=$(basename $FQAddr .fastq)
-		#  Check if using combined ref
-		if [ $CombineRefs = true ]; 
-		#  Align to combined reference
-		then
-			#  Get each type found for each fastq
-			GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}.txt 
-			Reference=$(awk "NR==1" $GenoTypeCallFile)
+			#  Align to combined reference, split and subtype
+			Reference=$(awk "NR==1" $CombRefFile)
 			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
 			echo File $FQName with $Reference "done" with MERGED file alignment... 
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with MERGED file alignment... " >> $LogF/${TopRunName}.txt
 
 			#  Get merged ref name
-			MergedRef=$(< $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}.txt)
-			EndRefs=$(awk 'END{print NR}' $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt)
+			MergedRef=$(< $CombRefFile)
+
 			#  Split the combined reference alignments into individual bams and variant call
-			if [ $EndRefs -gt 1 ];
-			then 
+			BamName=${FQName}_${MergedRef}.sort.bam
+			bamtools split -in $ResultsF/$FQName/$MergedRef/ResultFiles/$BamName -reference
 
-				#  Split bam
-				BamName=${FQName}_${MergedRef}.sort.bam
-				bamtools split -in $ResultsF/$FQName/$MergedRef/ResultFiles/$BamName -reference
+			#  Collect each split file in a folder and call variants
+			for (( RefNum=1; RefNum<=$RefFileLen; RefNum++ )); 
+			do
+				
+				currentRef=$(awk "NR==$RefNum" $RefFile)
+				mkdir -p $ResultsF/$FQName/$currentRef/ResultFiles
+				SplitBam=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_${currentRef}.bam
+				SplitBamUn=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_unmapped.bam
+				
+				#  If succesful split, move bam to results folder and start variant call
+				if [ -f $SplitBam ]; 
+				then
+					# Rename from what bamtools split called them
+					mv $SplitBam $ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
+					SplitBam=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
 
-				#  Collect each split file in a folder and call variants
-				for (( RefNum=1; RefNum<=$EndRefs; RefNum++ )); 
-				do
-					
-					currentRef=$(awk "NR==$RefNum" $ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt)
-					mkdir -p $ResultsF/$FQName/$currentRef/ResultFiles
-					SplitBam=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_${currentRef}.bam
-					SplitBamUn=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_unmapped.bam
-					
-					#  If succesful split, move bam to results folder and start variant call
-					if [ -f $SplitBam ]; 
-					then
-						# Rename from what bamtools split called them
-						mv $SplitBam $ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
-						SplitBam=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
+					# SUBTYPE THE SPLIT BAM. For each genotype in inputref file, find subtype
+					if [ $VirStrainSubTyping = true ]; then
+						# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
+						typeRank=1
+						typeTier=1
+						#  Setting typeTier to output by incrementing input typeTier to output typeTier
+						let "typeTier=typeTier+1"
 
-						#  Variant filtrering, indexing and sorting
-						"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a "ampliconRefPlaceholder"
-						echo File $FQName with $Reference "done" with split file variant call...
-						echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with split file variant call..." >> $LogF/${TopRunName}.txt
+						VirStrainSub=$(sed -n "${RefNum}"p "$RefFile" | grep -o "^HPV[0-9]*") # -o to only output match
+						prevCall=$(sed -n "${RefNum}"p "$RefFile" | grep "^HPV[0-9]*" | awk '{print $1}')
+						# Avoid edge cases where HPV is not named HPV[0-9]*, but like HPV-[A-Z]. These are not integrated into the pipeline yet (such as HPV-mSK008_MH777156_2)
+						if [ $VirStrainSub = HPV ]; then
+							continue
+						fi
+						echo Finding $VirStrainSub subtype rank $RefNum for ${FQName}...
+						echo [$(date +"%d-%m-%Y %H:%M:%S")] "Finding $VirStrainSub subtype rank $RefNum for ${FQName}..." >> $LogF/${TopRunName}.txt
+						BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
+						VSdb=$MainF/References/$VirStrainSubFolders/$BaseDBName # VirStrainSubFolders comes from Configurations.yaml file
+						"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r "$RefNum"
+						if [ $RefFileLen = $RefNum ]; then
+							echo "$FQNum of $FQListLen "done""
+							echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
+						fi
+					fi 
 
-					fi
+					#  Variant filtrering, indexing and sorting
+					"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a "ampliconRefPlaceholder"
+					echo File $FQName with $Reference "done" with split file variant call...
+					echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with split file variant call..." >> $LogF/${TopRunName}.txt
 
-					if [ -f $SplitBamUn ]; 
-					then
-						# Rename from what bamtools split called them
-						mv $SplitBamUn $ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_unmapped.sort.bam
-						SplitBamUn=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_unmapped.sort.bam
-					fi
-				done
-			else
-				# Align without splits
-				GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
-				Reference=$(awk "NR==1" $GenoTypeCallFile)
-				"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
-				"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
+				fi
 
-				# Variant call
-				workD=$ResultsF/$FQName
-				currentF=$workD/$Reference
-				BamFile=$currentF/${Reference}.bam
-				BamFile="${BamFile%bam}"sort.bam
-				"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
-				echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
-				echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
+				if [ -f $SplitBamUn ]; 
+				then
+					# Rename from what bamtools split called them
+					mv $SplitBamUn $ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_unmapped.sort.bam
+					SplitBamUn=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_unmapped.sort.bam
+				fi
+			done
 
-			fi
 		echo $FQName "done" with split calls... $FQNum of $FQListLen fastq files
-		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQName "done" with split calls... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQName "done" with split calls... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 		else
+		# If only one reference subtype, align and variant call without splits
+
+			if [ $VirStrainSubTyping = true ]; then
+				# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
+				typeRank=1
+				typeTier=1
+				#  Setting typeTier to output by incrementing input typeTier to output typeTier
+				let "typeTier=typeTier+1"
+
+				VirStrainSub=$(sed -n 1p "$RefFile" | grep -o "^HPV[0-9]*") # -o to only output match
+				prevCall=$(sed -n 1p "$RefFile" | grep "^HPV[0-9]*" | awk '{print $1}')
+				# Avoid edge cases where HPV is not named HPV[0-9]*, but like HPV-[A-Z]. These are not integrated into the pipeline yet (such as HPV-mSK008_MH777156_2)
+				if [ $VirStrainSub = HPV ]; then
+					continue
+				fi
+				echo Finding $VirStrainSub subtype for ${FQName}...
+				echo [$(date +"%d-%m-%Y %H:%M:%S")] "Finding $VirStrainSub subtype for ${FQName}..." >> $LogF/${TopRunName}.txt
+				BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
+				VSdb=$MainF/References/$VirStrainSubFolders/$BaseDBName # VirStrainSubFolders comes from Configurations.yaml file
+				"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r 1
+				echo "$FQNum of $FQListLen "done""
+				echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
+			fi
+
 			# Align without splits
-	 		GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
-			Reference=$(awk "NR==1" $GenoTypeCallFile)
-	 		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
+			typeTier=2
+			typeRank=1
+			RefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
+			Reference=$(awk "NR==1" $RefFile)
+			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
 			
 			# Variant call
 			workD=$ResultsF/$FQName
@@ -385,49 +378,105 @@ then
 			BamFile=$currentF/${Reference}.bam
 			BamFile="${BamFile%bam}"sort.bam
 			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
-	 		echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
+			echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 
 		fi
+
 	done
 fi
 
 
 
-###########
-
-# Fixing name of vcf files that have had all filtered variants removed if there were no combined references with split bamfiles 
-typeTier=2
+########### VIRSTRAIN SUBTYPING  ###########
+#  Getting correct VirStrain subtypedatabase for genotype
+#  Saving main calls to GenotypeCalls Folder
+if [ $VirStrainSubTyping = true ] && [ $CombineRefs = false ];	 then
+# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
+echo ENTERED SUBTYPE >> $ResultsF/log.txt #TEST
+typeRank=1
 for (( FQNum=1; FQNum<=$FQListLen; FQNum++ ))
 do
 	FQAddr=$(awk "NR==$FQNum" $FQList)
 	FQName=$(basename $FQAddr .fastq)
 
-	FILE1=$MainF/GenotypeCalls/$TopRunName/${FQName}/${FQName}_T${typeTier}_SplitTo.txt
-	FILE2=$MainF/GenotypeCalls/$TopRunName/${FQName}/${FQName}_T${typeTier}.txt
-
-	# Checking if a fastqfile had combined references or not
-	if cmp --silent -- "$FILE1" "$FILE2"; 
+	typeTier=1
+	MainCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_SplitTo.txt
+	#  Setting typeTier to output by incrementing input typeTier to output typeTier
+	let "typeTier=typeTier+1"
+	#  For each genotype in inputref file, find subtype
+	if [ -f $MainCallFile ]; # Skips fastq if no genotype were found. 
 	then
-		StartRefs=1
-		EndRefs=$(awk 'END{print NR}' $MainF/GenotypeCalls/$TopRunName/${FQName}/${FQName}_T${typeTier}_SplitTo.txt)
-		for (( FQNum=$StartRefs; FQNum<=$EndRefs; FQNum++ )); 
-		do
-			currentRef=$(awk "NR==$FQNum" $MainF/GenotypeCalls/$TopRunName/${FQName}/${FQName}_T${typeTier}_SplitTo.txt)
-			# Renaming so R script can find edited vcf file
-			if [ -f $ResultsF/$FQName/${currentRef}/${currentRef}.sort.readGroupFix_filtered_FiltEx_headerfix.vcf ];
-			then
-				cp $ResultsF/$FQName/${currentRef}/${currentRef}.sort.readGroupFix_filtered_FiltEx_headerfix.vcf $ResultsF/$FQName/${currentRef}/${FQName}_${currentRef}.sort.readGroupFix_filtered_FiltEx_headerfix.vcf
-			fi
-		done
+		echo maincallfile exists >> $ResultsF/log.txt #TEST
+		:
+	else
+		echo maincallfile $MainCallFile does not exist #TEST
+		continue
 	fi
+
+	genoEnd=$(awk 'END{print NR}' "$MainCallFile")
+	for (( genonum=1; genonum<=$genoEnd; genonum++ )); 
+	do
+		VirStrainSub=$(sed -n "${genonum}"p "$MainCallFile" | grep -o "^HPV[0-9]*") # -o to only output match
+		prevCall=$(sed -n "${genonum}"p "$MainCallFile" | grep "^HPV[0-9]*" | awk '{print $1}')
+		# Avoid edge cases where HPV is not named HPV[0-9]*, but like HPV-[A-Z]. These are not integrated into the pipeline yet (such as HPV-mSK008_MH777156_2)
+		if [ $VirStrainSub = HPV ]; then
+			continue
+		fi
+		echo Finding $VirStrainSub subtype rank $genonum for ${FQName}...
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "Finding $VirStrainSub subtype rank $genonum for ${FQName}..." >> $LogF/${TopRunName}.txt
+		BaseDBName=$(echo ${VirStrainSub}_VirStrainDB)
+		VSdb=$MainF/References/$VirStrainSubFolders/$BaseDBName # VirStrainSubFolders comes from Configurations.yaml file
+		"${BashScriptF}"/VirStrain_typeCall.sh -f $FQAddr -s $TopRunName -m $MainF -v $VSdb -c $prevCall -t $typeTier -g "$VirSSubTypingTop" -r "$genonum"
+		if [ $genonum = $genoEnd ]; then
+			echo "$FQNum of $FQListLen "done""
+			echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
+		fi
+	done
 done
+fi
+
+
+
+
+
+########### ALIGNMENT & VARIANT CALLING (INCL. MERGED REF) ###########
+# This will align each fastq to each of the found types one by one and then to all found types.
+if [ $CombineRefs = false ] && [ $AlignAndVariantCall = true ]; 
+then 
+	#  Set which type tier to combine
+	typeTier=1
+	typeRank=1
+	for (( FQNum=1; FQNum<=$FQListLen; FQNum++ ));
+	do
+		FQAddr=$(awk "NR==$FQNum" $FQList)
+		FQName=$(basename $FQAddr .fastq)	
+
+		# Align without splits
+		typeTier=2
+		GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
+		Reference=$(awk "NR==1" $GenoTypeCallFile)
+		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
+		
+		# Variant call
+		workD=$ResultsF/$FQName
+		currentF=$workD/$Reference
+		BamFile=$currentF/${Reference}.bam
+		BamFile="${BamFile%bam}"sort.bam
+		"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
+		echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
+
+	done
+fi
+
 
 
 ########### Annotate variants including E4 Splice calls ###########
 if [ $AnnotateVariants = true ]; then
 	typeTier=2
 	# Script gets fastq files from MultiFQName
+	echo Annotating variants... 
 	echo [$(date +"%d-%m-%Y %H:%M:%S")] Annotating variants... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_wE4SpliceGeneFix.R $MainF $ResultsF $TopRunName $FQList $typeTier
 	# Fix For No call script, hvor multiple aminosyrer ændringer vises med ", " og ændrer til ","
@@ -438,17 +487,13 @@ fi
 # ########### Summarizing variant results ###########
 if [ $Summarize = true ]; then
 
-	# Laver 1 fil med alle mulige referencer til No_call_script
-	#find $RefF/ -maxdepth 1 -name '*.fasta' | sed 's/^.*\(References.*fasta\).*$/\1/' | \
-	#sed 's/.fasta//g' | sed 's/References\///g' > $RefdF/RefSubtyper_latest.txt
-
-	#if [ -d $ResultsF/$FQName/$refType ]; then
+	echo Summarizing variant results...
 	echo [$(date +"%d-%m-%Y %H:%M:%S")] Summarizing variant results... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF $ResultsF $TopRunName $FQList
 	# [SaveDir] [ReferenceName] [TopRunName] [ListOfFastqFiles]
 
 	# Samler splittede annotationresultat filer
-	if [ -f $ResultsF/AnnotationFrequency_${TopRunName}*.txt ]; then
+	if ls $ResultsF/AnnotationFrequency_${TopRunName}*.txt 1> /dev/null 2>&1; then
 		cat $ResultsF/AnnotationFrequency_${TopRunName}*.txt | awk "NR==1 {print}" > colname_${TopRunName}.txt
 		awk FNR!=1 $ResultsF/AnnotationFrequency_${TopRunName}*.txt > anno_${TopRunName}.txt  # Undgår første linje, da den er kolonnenavne
 		cat colname_${TopRunName}.txt anno_${TopRunName}.txt > $ResultsF/AnnotationSummary_${TopRunName}.txt
@@ -459,9 +504,9 @@ if [ $Summarize = true ]; then
 	else
 		rm $ResultsF/ForNoCallScript_*.txt
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
-		echo [$(date +"%d-%m-%Y %H:%M:%S")] "No variants found in this run" >> $LogF/${TopRunName}.txt
-
+		echo [$(date +"%d-%m-%Y %H:%M:%S")] "No variants found in this run. Low coverage?" >> $LogF/${TopRunName}.txt
 	fi
+	echo [$(date +"%d-%m-%Y %H:%M:%S")] "Summaries done" >> $LogF/${TopRunName}.txt
 fi
 
 # Cleanup
@@ -470,9 +515,11 @@ then
 	if [ ${#RunName} -gt 0 ] && [ ${#MainF} -gt 0 ]; 
 	then
 		rm $FQList
-		rm -r Annotation_results/*.bed Annotation_results/*.txt 
-		rm -r $MainF/GenotypeCalls/${RunName}*
-		rm -r $MainF/VirStrain_run/${RunName}*
+		rm -f Annotation_results/*.bed Annotation_results/*.txt
+		# Removing filtered fastq files if filtering were done
+		if [[ "$FQF" == *"_filtered" ]]; then
+			rm -r $FQF
+		fi
 	fi
 fi
 
