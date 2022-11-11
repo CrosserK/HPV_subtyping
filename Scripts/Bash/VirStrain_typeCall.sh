@@ -49,7 +49,7 @@ fi
 
 # Call types with VirStrain
 cd ~/VirStrain
-python /home/pato/VirStrain/VirStrain.py -i $FQAddr -d $VirStrain_db -o $VirSOut 
+python /home/pato/VirStrain/VirStrain.py -i $FQAddr -d $VirStrain_db -o $VirSOut -s 1
 cd
 
 # Print top n, if VirStrain found anything
@@ -80,11 +80,13 @@ then
     done
 else
     varCheck() {
-        # Checks if variable is defined. If, set subtype to geontype, else skips loop 
+        # Checks if variable is defined. If, set subtype to genotype, else skips loop 
         if [ -n "${prevCall-}" ]
         then
             echo $prevCall > $mergedOut
             echo $prevCall > $splitOut
+            echo $prevCall > $virOutFile
+            echo $prevCall "(No Subtype found)" > ${virOutFile%.txt}_wScore.txt
         elif [ "${prevCall+defined}" = defined ]
         then
             echo "$FQName - No genotype found" >> $MainF/Results/$TopRunName/Not_genotyped.txt
