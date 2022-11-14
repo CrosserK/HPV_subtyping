@@ -393,7 +393,6 @@ fi
 #  Saving main calls to GenotypeCalls Folder
 if [ $VirStrainSubTyping = true ] && [ $CombineRefs = false ];	 then
 # Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
-echo ENTERED SUBTYPE >> $ResultsF/log.txt #TEST
 typeRank=1
 for (( FQNum=1; FQNum<=$FQListLen; FQNum++ ))
 do
@@ -407,10 +406,8 @@ do
 	#  For each genotype in inputref file, find subtype
 	if [ -f $MainCallFile ]; # Skips fastq if no genotype were found. 
 	then
-		echo maincallfile exists >> $ResultsF/log.txt #TEST
 		:
 	else
-		echo maincallfile $MainCallFile does not exist #TEST
 		continue
 	fi
 
@@ -480,13 +477,14 @@ if [ $AnnotateVariants = true ]; then
 	echo [$(date +"%d-%m-%Y %H:%M:%S")] Annotating variants... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/Annotate_vcf_multiple_for_bash_wE4SpliceGeneFix.R $MainF $ResultsF $TopRunName $FQList $typeTier
 	# Fix For No call script, hvor multiple aminosyrer ændringer vises med ", " og ændrer til ","
-	sed -i 's/,\s/,/g' $ResultsF/ForNoCallScript_${TopRunName}_Nuc_change_coords.txt
+	sed -i 's/,\s/,/g' $ResultsF/ForSummaryScript_${TopRunName}_Nuc_change_coords.txt
 fi
 
 
 # ########### Summarizing variant results ###########
 if [ $Summarize = true ]; then
 
+	cat $ResultsF/${TopRunName}_Nuc_change_coords_*.bed > $ResultsF/VariantPositions_${TopRunName}.bed
 	echo Summarizing variant results...
 	echo [$(date +"%d-%m-%Y %H:%M:%S")] Summarizing variant results... >> $LogF/${TopRunName}.txt
 	Rscript $Rscriptfolder/No_calls_on_vcf.R $MainF $ResultsF $TopRunName $FQList
@@ -494,15 +492,15 @@ if [ $Summarize = true ]; then
 
 	# Samler splittede annotationresultat filer
 	if ls $ResultsF/AnnotationFrequency_${TopRunName}*.txt 1> /dev/null 2>&1; then
+		# Collecting summaries from each reference
 		cat $ResultsF/AnnotationFrequency_${TopRunName}*.txt | awk "NR==1 {print}" > colname_${TopRunName}.txt
 		awk FNR!=1 $ResultsF/AnnotationFrequency_${TopRunName}*.txt > anno_${TopRunName}.txt  # Undgår første linje, da den er kolonnenavne
 		cat colname_${TopRunName}.txt anno_${TopRunName}.txt > $ResultsF/AnnotationSummary_${TopRunName}.txt
 		rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
 		rm colname_${TopRunName}.txt anno_${TopRunName}.txt
-		cat $ResultsF/${TopRunName}_Nuc_change_coords_*.bed > $ResultsF/VariantPositions_${TopRunName}.bed
 		rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
 	else
-		rm $ResultsF/ForNoCallScript_*.txt
+		rm $ResultsF/ForSummaryScript_*.txt
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
 		echo [$(date +"%d-%m-%Y %H:%M:%S")] "No variants found in this run. Low coverage?" >> $LogF/${TopRunName}.txt
 	fi
