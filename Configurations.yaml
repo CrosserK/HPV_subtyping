@@ -26,6 +26,5 @@
   CombineRefs: true
   AlignAndVariantCall: true
   AnnotateVariants: true
-  Summarize: true
-  DebugMode: false
+  DebugMode: true
   startPreviousRun: false

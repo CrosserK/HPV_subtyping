@@ -482,7 +482,7 @@ fi
 
 
 # ########### Summarizing variant results ###########
-if [ $Summarize = true ]; then
+if [ $AnnotateVariants = true ]; then
 
 	cat $ResultsF/${TopRunName}_Nuc_change_coords_*.bed > $ResultsF/VariantPositions_${TopRunName}.bed
 	echo Summarizing variant results...
@@ -504,8 +504,15 @@ if [ $Summarize = true ]; then
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
 		echo [$(date +"%d-%m-%Y %H:%M:%S")] "No variants found in this run. Low coverage?" >> $LogF/${TopRunName}.txt
 	fi
+
+	# Format results
+	sublineagesFile="/home/pato/Skrivebord/HPV_subtyping/References/ReferenceToSublineage.csv"
+	python $PythonScriptF/FormatResults.py -r $ResultsF -t $TopRunName -s $sublineagesFile
+
 	echo [$(date +"%d-%m-%Y %H:%M:%S")] "Summaries done" >> $LogF/${TopRunName}.txt
 fi
+
+
 
 # Cleanup
 if [ $DebugMode = false ]; 
