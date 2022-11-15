@@ -91,8 +91,7 @@ for(i in 1:as.integer(length(Refs[[1]])+1)){
     # Convenience progress tracker
     print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
     if(counter == lengthofList){
-      print("Job's done!")
-      
+
     }
   }
   
@@ -120,5 +119,5 @@ fn <- paste(SaveDir, "/","ForSummaryScript_",TopRunName,"_Nuc_change_coords.txt"
 if (file.exists(fn)) {
  file.remove(fn)
 }
-print("Summaries done")
+print("Summaries done!")
 
