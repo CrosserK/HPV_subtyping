@@ -205,8 +205,8 @@ echo $Reference $(grep -v '^#' ${VarFile%.vcf}_FiltEx.vcf | wc -l) >> $MMcountFi
 sed '/^##source=HaplotypeCaller/d' $VarFile > ${VarFile%.vcf}_headerfix.vcf # removing duplicate "source"
 sed '/^##source=HaplotypeCaller/d' ${VarFile%.vcf}_FiltEx.vcf  > ${VarFile%.vcf}_FiltEx_headerfix.vcf # removing duplicate "source"
 
-cp ${VarFile} $currentF/ResultFiles/${FQName}_${Reference}_filt.vcf;
-cp ${VarFile} $currentF/ResultFiles/${FQName}_${Reference}.vcf.idx;
+mv ${VarFile} $currentF/ResultFiles/${FQName}_${Reference}_filt.vcf;
+mv ${VarFile}.idx $currentF/ResultFiles/${FQName}_${Reference}.vcf.idx;
 rm ${VarFile%.vcf}_FiltEx.vcf ${VarFile%.vcf}_FiltEx.vcf.idx; # Removing files with filtered pos excluded as it was only to count for mismatch file. 
 
 sort -k2 -n $MMcountFile > "${MMcountFile}".sort # Sorting for least mismatches
