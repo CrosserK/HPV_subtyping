@@ -179,7 +179,7 @@ for sample in confirmedJson.keys():
         fastqname = os.path.basename(fastqname)
         fastqname = fastqname.replace(".fastq","")
     if "fastqname" not in locals():
-        fastqname = sample + "_FASTQ_NOT_FOUND"
+        fastqname = sample + "_FastqNotFoundButGenotypedFromMatrix"
 
     file1 = open(refSavePath+"/TypeCallSummary_T1.txt", "a")
     L = [fastqname] 
