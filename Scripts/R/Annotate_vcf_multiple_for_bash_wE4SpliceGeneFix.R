@@ -23,7 +23,7 @@ LogFile <- paste(MainF,"/QC/Logs/",TopRunName,".txt", sep = "")
 
  
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# TopRunName <- "Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1424_14112022"
+# TopRunName <- "Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1235_17112022"
 # MultiFQfile <- paste("/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_",TopRunName,".txt",sep="")
 # SaveDir <- paste("/home/pato/Skrivebord/HPV_subtyping/Results/",TopRunName,sep="")
 # typeTier <- "2"
@@ -58,7 +58,7 @@ counter <- 0
 noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
-  #Fastqname <- MultiFastqList[2]
+  #Fastqname <- MultiFastqList[1]
   #Fastqname <-  "/home/pato/Skrivebord/HPV_subtyping/FASTQ/Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1459_11112022_filtered/35_Baseline.IonXpress_008.fastq" 
   Fastqname <- tools::file_path_sans_ext(basename(Fastqname)) # Getting fastqname without path and ext
   # Checking if there's split bamfiles because of multple HPV types in one fastq
@@ -172,9 +172,12 @@ for(Fastqname in MultiFastqList){
     
     # For hver variant, tjek for ukorrigeret splicegen kald
     for(annoRow in 1:nrow(anno_df)){
-
-      # If there is a row
-      if(isTRUE(anno_df$GENEID[annoRow])==TRUE){
+      
+      # Check if row exists
+      rowExistsCheck <- try(anno_df$GENEID[annoRow])
+      if("try-error" %in% class(rowExistsCheck)){
+        next
+      } else {
         # If it is E4_splice
         if(anno_df$GENEID[annoRow] == "E4_splice"){
         # Konverterer DNAstringsets til characters
@@ -492,18 +495,17 @@ for(Fastqname in MultiFastqList){
               
             }
             
-            
-            # Retter tabel med splice informationer
-            anno_df$PROTEINLOC[annoRow] <- AAPos
-            anno_df$QUERYID[annoRow] <- "x"
-            anno_df$TXID[annoRow] <- "x"
-            anno_df$CDSID[annoRow] <- "x"
-            #anno_df$CONSEQUENCE[annoRow] <- as.factor("x")
-            anno_df$REFCODON[annoRow] <- codon
-            anno_df$VARCODON[annoRow] <- altCodon
-            anno_df$REFAA[annoRow] <- actualAA
-            anno_df$VARAA[annoRow] <- actualALTAA
-          }
+        }
+        # Retter tabel med splice informationer
+        anno_df$PROTEINLOC[annoRow] <- AAPos
+        anno_df$QUERYID[annoRow] <- "x"
+        anno_df$TXID[annoRow] <- "x"
+        anno_df$CDSID[annoRow] <- "x"
+        #anno_df$CONSEQUENCE[annoRow] <- as.factor("x")
+        anno_df$REFCODON[annoRow] <- codon
+        anno_df$VARCODON[annoRow] <- altCodon
+        anno_df$REFAA[annoRow] <- actualAA
+        anno_df$VARAA[annoRow] <- actualALTAA
         }
       }
       
@@ -547,7 +549,7 @@ for(Fastqname in MultiFastqList){
         
  
     # Convenience for tracking progress
-    print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
+    #print(paste(Fastqname,"is done...",counter,"of",lengthofList, sep = " "))
     print(paste("Number of vcf files with no variants: ", noelement))
     print(paste("Number of vcf files corrupt or missing (possibly no bam from bamsplit): ", novcfcounter))  
     colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = ":")

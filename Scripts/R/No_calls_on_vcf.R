@@ -100,16 +100,20 @@ for(i in 1:as.integer(length(Refs[[1]])+1)){
   Anno_freq <- FreqDF 
   
   # Samler tabel til pæn form  
-  Anno_freq[,"NucChange"] <- as.data.frame(paste("c.",Anno_freq$NucPos, Anno_freq$NucChange, sep = ""))
-  Anno_freq <- Anno_freq[,!names(Anno_freq) %in% "NucPos"]
-  
-  # Making table more convenient
-  Anno_freq$GENEID[is.na(Anno_freq$GENEID)] <- "No suitable GFF file found"
-  #Anno_freq$GENEID <- Anno_freq[is.na(Anno_freq$GENEID)] 
-  Anno_freq$GENEID <- str_replace(Anno_freq$GENEID,"1,","")
-  # Laver annotation info filer:
-  write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",TopRunName, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
-  #file.remove(paste(SaveDir,"/","ForSummaryScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""))
+  # Checking for nucelotides in table
+  if(nrow(Anno_freq)>0){
+    Anno_freq[,"NucChange"] <- as.data.frame(paste("c.",Anno_freq$NucPos, Anno_freq$NucChange, sep = ""))
+    Anno_freq <- Anno_freq[,!names(Anno_freq) %in% "NucPos"]
+    
+    # Making table more convenient
+    Anno_freq$GENEID[is.na(Anno_freq$GENEID)] <- "No suitable GFF file found"
+    #Anno_freq$GENEID <- Anno_freq[is.na(Anno_freq$GENEID)] 
+    Anno_freq$GENEID <- str_replace(Anno_freq$GENEID,"1,","")
+    # Laver annotation info filer:
+    write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",TopRunName, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
+    #file.remove(paste(SaveDir,"/","ForSummaryScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""))
+  }
+ 
 }
 
 
