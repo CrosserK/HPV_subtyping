@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Kør dette efter bash scriptet til at generere gff3 fil:
+# Kør dette efter bash alignSubtypes til at generere gff3 fil:
 
 import os
 import sys
@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 # arguments
 parser = ArgumentParser()
 parser.add_argument("-s", "--subtype", required=True,
-                    help="input hap.py summary csv")
+                    help="hpvtype")
 parser.add_argument("-m", "--maintype", required=True, help="output csv")
 
 args = parser.parse_args()
@@ -22,9 +22,9 @@ maintype = args.maintype
 #subtype = "KC470277_1"
 #maintype = "HPV68"
 
-gffFolder = "/home/pato/Skrivebord/HPV16_projekt/References/GFFfiles/"
-mainfolder = "Organised_Fastas/"+maintype
-e4fixSavePath = "/home/pato/Skrivebord/HPV16_projekt/References/E4fixCoords"
+gffFolder = "/home/pato/Skrivebord/HPV_subtyping/References/GFFfiles"
+mainfolder = "/home/pato/Skrivebord/HPV_subtyping/Scripts/CreateDBs/E4_splice_update/Organised_Fastas/"+maintype
+e4fixSavePath = "/home/pato/Skrivebord/HPV_subtyping/References/E4fixCoords"
 
 
 
@@ -39,7 +39,7 @@ else:
 txt_file.close()
 
 
-gfffile = gffFolder+subtype+".gff3"
+gfffile = gffFolder+"/"+subtype+".gff3"
 #infile = pd.read_csv(gfffile)
 with open(gfffile, "r") as file:
     gffstring = file.readlines()
@@ -98,13 +98,14 @@ e4e_2 = e4s_2+e42len-1
 
 # update the file
 fs = gffHeader2.split("\t")
-cdsPhaseCalc = (e4s_2 - e4s_1) % 3
+# Get the length of the first splice section to infer CDS phase. +1 because the positions are inclusive.
+cdsPhaseCalc = (e4s_2 - e4s_1 + 1) % 3
 
 if cdsPhaseCalc == 0:
     cdsPhase = 0
 elif cdsPhaseCalc == 1:
     cdsPhase = 2
-elif cdsPhaseCalc == 1:
+elif cdsPhaseCalc == 2:
     cdsPhase = 1
 else:
     sys.exit("CDSphase does not go into 0,1 or 2")
