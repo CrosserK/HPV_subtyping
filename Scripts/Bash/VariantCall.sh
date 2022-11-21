@@ -17,7 +17,7 @@ while [[ "$#" -gt 0 ]]; do
 		-s|--TopRunName) TopRunName="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -m|--mainf) MainF="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
 		-r|--reference) Reference="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
-		-a|--ampliconref) AmpliconRef="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
+		-a|--BedFolder) BedFolder="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -b|--bamfile) BamFile="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
 		-t|--typetier) typeTier="$2"; [ "$(echo "$2" | cut -c 1)" == "-" ] || [ "$2" == "" ] && help || shift 2;;
         -h|--help) help;;
@@ -47,10 +47,19 @@ echo Calling variants with reference ${Ref_FASTA##*/}
 echo [$(date +"%d-%m-%Y %H:%M:%S")] Calling variants with reference ${Ref_FASTA##*/} >> $LogF/${TopRunName}.txt
 
 
-# Splitting bamfile in the two 2 amplicon pools, if ref = ampliconref:
-if [ "$Reference" == "$AmpliconRef" ]; 
+# Get number of amplicon pools 
+readarray -t amplPools < <(find $BedFolder -maxdepth 1 -name "pool*.bed")
+BedPoolN=${#amplPools[@]}
+
+if [ $BedPoolN -gt 1 ];
 then
-	for i in 1 2; do
+    # Using bedfile infer number of pools and variantcall each followed by merging. 
+    for i in 1 $BedPoolN; 
+    do
+
+        BamInt="${BamFile%.bam}"_intersect${i}.bam
+		poolWithOneRefOnly=${tmpBedFile%.bed}_${Reference}.bed
+        grep "$Reference" $tmpBedFile > $poolWithOneRefOnly
 
 		# Choose file
 		tmpBedFile="${BedFilePool%x.bed}"_pool${i}.bed
@@ -74,7 +83,8 @@ then
 
 	done 
 
-	# Merge vcf files from each pool. Does not merge bam files, as duplicates can occur, because each split can contain some of the same reads:
+	# Merge vcf files from each pool. Does not merge bam files from each pool as cuplicates can occur, because
+    # both splits can contain some of the same reads
 	java -jar ~/picard.jar MergeVcfs \
 	-I "${BamFile%.bam}"_intersect1.readGroupFix_IntFilt.vcf \
 	-I "${BamFile%.bam}"_intersect2.readGroupFix_IntFilt.vcf \
@@ -84,9 +94,10 @@ then
 
 	VarFile="${BamFile%.bam}"_merged_fix.vcf
 
-else # Do normal variant call
+else 
+	# Do normal variant call
 
-	# Add tags necessary for GATK because they are not uBAM files 
+	# Add tags necessary for GATK because they are not uBAM files
 	# RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
 	java -jar ~/picard.jar AddOrReplaceReadGroups \
 	I=$BamFile \
