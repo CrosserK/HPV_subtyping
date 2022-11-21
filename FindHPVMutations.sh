@@ -164,6 +164,7 @@ if [ $CovMatrixGenoTyping = true ]; then
 	python $PythonScriptF/autoDetectTypeFromCov.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -f $FQF -t $typeTier -g $HouseGeneEndRow -l $LogF/${TopRunName}.txt
 	# Integration detection by deletion detection
 	python $PythonScriptF/detectIntegration.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed
+	python $PythonScriptF/amplPosToBed.py -o $FQF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed
 fi
 
 
@@ -270,7 +271,12 @@ then
 
 			#  Align to combined reference, split and subtype
 			Reference=$(awk "NR==1" $CombRefFile)
-			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+			
+			# First remove primers, by aligning and using bedtools intersect and ampliconcut. 
+			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
+			# Then convert back to fastq for use of the subtyping
+			samtools fastq 					-f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+
 			echo File $FQName with $Reference "done" with MERGED file alignment... 
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with MERGED file alignment... " >> $LogF/${TopRunName}.txt
 
@@ -323,7 +329,7 @@ then
 					fi 
 
 					#  Variant filtrering, indexing and sorting
-					"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a "ampliconRefPlaceholder"
+					"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a ${FQF}/pool -n 1
 					echo File $FQName with $Reference "done" with split file variant call...
 					echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with split file variant call..." >> $LogF/${TopRunName}.txt
 
@@ -370,14 +376,14 @@ then
 			typeRank=1
 			RefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
 			Reference=$(awk "NR==1" $RefFile)
-			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
+			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
 			
 			# Variant call
 			workD=$ResultsF/$FQName
 			currentF=$workD/$Reference
 			BamFile=$currentF/${Reference}.bam
 			BamFile="${BamFile%bam}"sort.bam
-			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
+			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool -n 1
 			echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 
@@ -453,14 +459,14 @@ then
 		typeTier=2
 		GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
 		Reference=$(awk "NR==1" $GenoTypeCallFile)
-		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b "bedfileReplacement"
+		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
 		
 		# Variant call
 		workD=$ResultsF/$FQName
 		currentF=$workD/$Reference
 		BamFile=$currentF/${Reference}.bam
 		BamFile="${BamFile%bam}"sort.bam
-		"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a "ampliconRefPlaceholder"
+		"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool -n 1
 		echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
 		echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 
@@ -496,9 +502,9 @@ if [ $AnnotateVariants = true ]; then
 		cat $ResultsF/AnnotationFrequency_${TopRunName}*.txt | awk "NR==1 {print}" > colname_${TopRunName}.txt
 		awk FNR!=1 $ResultsF/AnnotationFrequency_${TopRunName}*.txt > anno_${TopRunName}.txt  # Undgår første linje, da den er kolonnenavne
 		cat colname_${TopRunName}.txt anno_${TopRunName}.txt > $ResultsF/AnnotationSummary_${TopRunName}.txt
-		rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
-		rm colname_${TopRunName}.txt anno_${TopRunName}.txt
-		rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
+		# rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
+		# rm colname_${TopRunName}.txt anno_${TopRunName}.txt
+		# rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
 	else
 		rm $ResultsF/ForSummaryScript_*.txt
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
