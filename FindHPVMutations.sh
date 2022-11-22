@@ -32,6 +32,9 @@ set -e  # Exit if something exits with a non-zero status
 # Set input folder
 FQF=$MainF/FASTQ
 
+CombineRefs="true" # This option is currently mandatory, so removed from configurations file and set here
+VirStrainSubTyping="true" # This option is currently mandatory, so removed from configurations file and set here
+
 ############################################
 # Check configurations
 if [ $CovMatrixGenoTyping = true ] && [ $VirStrainGenoTyping = true ]; then
@@ -194,10 +197,9 @@ fi
 
 
 # Combined ref split before subtyping
-# ########### Combining references and/or saving in genotypecalls folder ###########
-if [ $CombineRefs = true ] && [ $AlignAndVariantCall = true ]; 
+########### Combining references and/or saving in genotypecalls folder ###########
+if [ $CombineRefs = true ] && [ $AlignAndVariantCall = true ];
 then
-
 
 	# Combine fasta refs. Removing unwanted fai files first.
 	rm -f $RefF/*.fasta.fai
@@ -222,7 +224,7 @@ then
 		fi
 
 		RefFileLen=$(awk 'END{print NR}' $RefFile)
-		# If more than one reference found, combine fasta and align to it, then bamsplit and variant call
+		# If more than one reference found, combine fasta and align to it, then bamsplit, ampliconcut and convert to fastq again before variant call
 		if [ $RefFileLen -gt 1 ]; 
 		then
 
@@ -267,15 +269,13 @@ then
 				fi
 			fi
 
-			####### COMBINED REFERENCE CREATED
+			####### COMBINED REFERENCE CREATED, NOW ALIGN #######
 
-			#  Align to combined reference, split and subtype
+			#  Align to combined reference then split
 			Reference=$(awk "NR==1" $CombRefFile)
 			
-			# First remove primers, by aligning and using bedtools intersect and ampliconcut. 
-			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
-			# Then convert back to fastq for use of the subtyping
-			samtools fastq 					-f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+			
 
 			echo File $FQName with $Reference "done" with MERGED file alignment... 
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with MERGED file alignment... " >> $LogF/${TopRunName}.txt
@@ -287,7 +287,7 @@ then
 			BamName=${FQName}_${MergedRef}.sort.bam
 			bamtools split -in $ResultsF/$FQName/$MergedRef/ResultFiles/$BamName -reference
 
-			#  Collect each split file in a folder and call variants
+			#  Collect each split file in a folder and and intersect with amplicons. Then convert to fastq for subtyping
 			for (( RefNum=1; RefNum<=$RefFileLen; RefNum++ )); 
 			do
 				
@@ -296,14 +296,19 @@ then
 				SplitBam=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_${currentRef}.bam
 				SplitBamUn=$ResultsF/$FQName/$MergedRef/ResultFiles/${FQName}_${MergedRef}.sort.REF_unmapped.bam
 				
-				#  If succesful split, move bam to results folder and start variant call
+				#  If succesful split, move bam to results folder 
 				if [ -f $SplitBam ]; 
 				then
 					# Rename from what bamtools split called them
 					mv $SplitBam $ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
 					SplitBam=$ResultsF/$FQName/$currentRef/ResultFiles/${FQName}_BAMSplit_${currentRef}.sort.bam
 
-					# SUBTYPE THE SPLIT BAM. For each genotype in inputref file, find subtype
+					# Intersect with amplicons, creating new fastq files.
+					# Testing if there is more than one pool
+					# This creates new fastq files that have had primers removed. For subtyping. The maintypes are now saved in txt files
+					"${BashScriptF}"/ampliconclip.sh -f $FQAddr -b $SplitBam -r $currentRef -a $FQF -m $MainF
+
+					# Subtype the new fastq files
 					if [ $VirStrainSubTyping = true ]; then
 						# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
 						typeRank=1
@@ -328,8 +333,23 @@ then
 						fi
 					fi 
 
-					#  Variant filtrering, indexing and sorting
-					"${BashScriptF}"/VariantCall.sh -f $FQName -s $TopRunName -m $MainF -r $currentRef -b $SplitBam -t $typeTier -a ${FQF}/pool -n 1
+					#  Align, Variant call, indexing and sorting
+					# Setting tier of type level that will be used as input (etc. genotype = 1, subtype = 2)
+					typeTier=2
+					# Setting tier of type rank that will be input (if it is best match = 1, or 2nd best match = 2, etc.)
+					typeRank=1
+					# Finding number of references in reference file
+					RefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_SplitTo.txt
+					Reference=$(awk "NR==1" $RefFile)
+					
+					"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+					
+					workD=$ResultsF/$FQName
+					currentF=$workD/$Reference
+					BamFile=$currentF/${Reference}.bam
+					BamFile="${BamFile%bam}"sort.bam
+					"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $currentRef -b $BamFile -t $typeTier -a ${FQF}/pool # bedpool is fake to avoid options
+					
 					echo File $FQName with $Reference "done" with split file variant call...
 					echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with split file variant call..." >> $LogF/${TopRunName}.txt
 
@@ -347,7 +367,20 @@ then
 
 		echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQName "done" with split calls... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 		else
-		# If only one reference subtype, align and variant call without splits
+		
+		# If only one reference subtype, align and variant call without splits, but with ampliconclip
+		Reference=$(awk "NR==1" $RefFile)
+		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+		workD=$ResultsF/$FQName
+		currentF=$workD/$Reference
+		BamFile=$currentF/${Reference}.bam
+		BamFile="${BamFile%bam}"sort.bam
+
+		# Intersect with amplicons
+		echo mv $FQAddr ${FQAddr%.fastq}_notIntersected.fastq
+		mv $FQAddr ${FQAddr%.fastq}_notIntersected.fastq
+		# This creates new fastq files that have had primers removed. For subtyping. The maintypes are now saved in txt files
+		"${BashScriptF}"/ampliconclip.sh -f $FQAddr -b $BamFile -r $Reference -a $FQF -m $MainF
 
 			if [ $VirStrainSubTyping = true ]; then
 				# Setting tier of type rank that will be input (if it is best match or 2nd best match etc.)
@@ -371,19 +404,24 @@ then
 				echo [$(date +"%d-%m-%Y %H:%M:%S")] "$FQNum of $FQListLen "done"" >> $LogF/${TopRunName}.txt
 			fi
 
-			# Align without splits
+			# Align subtype
+			# Align, Variant call, indexing and sorting
+			# Setting tier of type level that will be used as input (etc. genotype = 1, subtype = 2)
 			typeTier=2
+			# Setting tier of type rank that will be input (if it is best match = 1, or 2nd best match = 2, etc.)
 			typeRank=1
+			# Finding number of references in reference file
 			RefFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
 			Reference=$(awk "NR==1" $RefFile)
-			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
 			
-			# Variant call
+			"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
+			
 			workD=$ResultsF/$FQName
 			currentF=$workD/$Reference
 			BamFile=$currentF/${Reference}.bam
 			BamFile="${BamFile%bam}"sort.bam
-			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool -n 1
+			"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool # bedpool is fake to avoid going into that option		
+			
 			echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
 			echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 
@@ -459,14 +497,14 @@ then
 		typeTier=2
 		GenoTypeCallFile=$ResultsF/${FQName}/TypeCalls/${FQName}_T${typeTier}_R${typeRank}_SplitTo.txt
 		Reference=$(awk "NR==1" $GenoTypeCallFile)
-		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier -b ${FQF}/pool -n $BedPoolN
+		"${BashScriptF}"/Alignment.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -t $typeTier
 		
 		# Variant call
 		workD=$ResultsF/$FQName
 		currentF=$workD/$Reference
 		BamFile=$currentF/${Reference}.bam
 		BamFile="${BamFile%bam}"sort.bam
-		"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool -n 1
+		"${BashScriptF}"/VariantCall.sh -f $FQAddr -s $TopRunName -m $MainF -r $Reference -b $BamFile -t $typeTier -a ${FQF}/pool
 		echo File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files
 		echo [$(date +"%d-%m-%Y %H:%M:%S")] "File $FQName with $Reference "done" with alignment and variant calling... $FQNum of $FQListLen fastq files" >> $LogF/${TopRunName}.txt
 

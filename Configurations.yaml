@@ -1,5 +1,5 @@
 # NAMING
-  RunName: Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A
+  RunName: Test_forsog1
   
 # QUALITY FILTERING
   qualityFilt: true
@@ -11,9 +11,8 @@
   CovMatrixGenoTyping: true
   HouseGeneEndRow: 5
   VirStrainGenoTyping: false
-  VirStrainSubTyping: true
   VirSGenoTypingTop: 2
-  VirSSubTypingTop: 2
+  VirSSubTypingTop: 3
   VirStrainMaindb: Combined_mainlines_wRevised_wHPV-mTypes
   VirStrainSubFolders: VirStrainDBs_HPV_sub
  
@@ -23,8 +22,7 @@
   sRef: HPV16_K02718_1_revised
  
 # MODULES 
-  CombineRefs: true
   AlignAndVariantCall: true
   AnnotateVariants: true
-  DebugMode: false
+  DebugMode: true
   startPreviousRun: false
