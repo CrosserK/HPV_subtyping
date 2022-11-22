@@ -23,7 +23,7 @@ LogFile <- paste(MainF,"/QC/Logs/",TopRunName,".txt", sep = "")
 
  
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# TopRunName <- "Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1235_17112022"
+# TopRunName <- "Test_forsog1_0951_21112022"
 # MultiFQfile <- paste("/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_",TopRunName,".txt",sep="")
 # SaveDir <- paste("/home/pato/Skrivebord/HPV_subtyping/Results/",TopRunName,sep="")
 # typeTier <- "2"
@@ -173,10 +173,25 @@ for(Fastqname in MultiFastqList){
     # For hver variant, tjek for ukorrigeret splicegen kald
     for(annoRow in 1:nrow(anno_df)){
       
+      #annoRow <- 1
       # Check if row exists
       rowExistsCheck <- try(anno_df$GENEID[annoRow])
-      if("try-error" %in% class(rowExistsCheck)){
-        next
+
+      # Check if row exists. If NA, set the variant as not in gene.
+      if(length(rowExistsCheck) == 0 || is.na(rowExistsCheck)){
+        if(exists("AnnoRdy")){
+          colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = ":")
+          AnnoRdy[1] <- "ErrorCannotHandleGff"
+          #newdf <- cbind.fill(newdf, AnnoRdy)
+          next
+        } else {
+          AnnoRdy <- data.frame(matrix(ncol = 1, nrow = 1))
+          colnames(AnnoRdy) <- paste(Fastqname,Refname,sep = ":")
+          AnnoRdy[1] <- "ErrorCannotHandleGff"
+          #newdf <- cbind.fill(newdf, AnnoRdy)
+          next
+        }
+        
       } else {
         # If it is E4_splice
         if(anno_df$GENEID[annoRow] == "E4_splice"){
