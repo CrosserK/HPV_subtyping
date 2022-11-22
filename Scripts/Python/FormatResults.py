@@ -65,11 +65,12 @@ for patient in inddf.columns:
     # Getting sublineage class and type from the reference id
     iteration = 0
 
+    subLineRow = 0
     for i in sublineages[4]:
         if i in ref:
-            sublineage = sublineages[3][iteration]
-            type = sublineages[1][iteration]
-    iteration +=1
+            sublineage = sublineages[3][subLineRow]
+            type = sublineages[1][subLineRow]
+        subLineRow +=1
 
     ptjson.update({
         'Patient' : spl[0],

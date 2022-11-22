@@ -22,11 +22,6 @@ parser.add_argument("-l","--logFile", required=True, help='Location of log file'
 
 args = parser.parse_args()
 
-# Housegenes to check and remove
-#housegenes = ['PABPN1','SRSF3','PPIE','RAB1B','BTF3']
-#housegenes = ['chr1_PPIE_AMPL4425884','chr5_BTF3_AMPL4425932','chr6_SRSF3_AMPL4425918','chr11_RAB1B_AMPL4426066','chr14_PABPN1_AMPL4425941']
-
-
 #Covarage matrix as csv file without quotes, seperated by commas
 file = args.infile
 typeTier = args.typeTier
@@ -156,7 +151,7 @@ for sample in ratioJson.keys():
     for hpvtype, ratioCov in ratioJson[sample].items():
         
         # Define minimum ratio to confirm hpvtype in sample (1 to 100)
-        if ratioCov > 20: 
+        if ratioCov > 1: 
             confirm = "yes" 
             foundOneForSample = "yes"
             if ratioCov > highestRatio:
@@ -194,6 +189,7 @@ for sample in confirmedJson.keys():
 
             # Append _ to hpv name so that HPV161 does not match HPV16 in a search:
             if "_" in hpvtype:
+                ht = hpvtype
                 pass
             else:
                 ht = hpvtype + "_" 
