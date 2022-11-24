@@ -7,13 +7,25 @@
   MinLen: 50
   MaxLen: 320
 
-# GENO AND SUBTYPING
+# COVERAGE MATRIX GENOTYPING
   CovMatrixGenoTyping: true
+  MinReadsToCountAmpliconAsCovered: 1
+  MinNumberOfAmpliconsToConsiderType: 2
+  RatioToConfirmType: 1
   HouseGeneEndRow: 5
+  
+# INTEGRATION DETECTION
+  MinDepthOnSampleToCheck: 50
+  LimitForIntCall: 50 
+  MinRatioForIntCall: 5
+
+# VIRSTRAIN GENOTYPING
   VirStrainGenoTyping: false
   VirSGenoTypingTop: 2
-  VirSSubTypingTop: 3
+
+# VIRSTRAIN SUBTYPING
   VirStrainMaindb: Combined_mainlines_wRevised_wHPV-mTypes
+  VirSSubTypingTop: 3
   VirStrainSubFolders: VirStrainDBs_HPV_sub
  
 # REFERENCES

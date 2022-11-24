@@ -164,13 +164,11 @@ fi
 if [ $CovMatrixGenoTyping = true ]; then
 	# Setting tier of type level that will be output (etc. genotype = 1, subtype = 2)
 	typeTier=1
-	python $PythonScriptF/autoDetectTypeFromCov.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -f $FQF -t $typeTier -g $HouseGeneEndRow -l $LogF/${TopRunName}.txt
+	python $PythonScriptF/autoDetectTypeFromCov.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -f $FQF -t $typeTier -g $HouseGeneEndRow -l $LogF/${TopRunName}.txt -c $RatioToConfirmType -a $MinReadsToCountAmpliconAsCovered -n $MinNumberOfAmpliconsToConsiderType
 	# Integration detection by deletion detection
-	python $PythonScriptF/detectIntegration.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed
+	python $PythonScriptF/detectIntegration.py -i $MainF/FASTQ/covMatrix.csv -o $ResultsF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed -d $MinDepthOnSampleToCheck -l $LimitForIntCall -m $MinRatioForIntCall
 	python $PythonScriptF/amplPosToBed.py -o $FQF -r $RefF -g $HouseGeneEndRow -a $MainF/FASTQ/amplPos.bed
 fi
-
-
 
 
 
