@@ -15,6 +15,9 @@ parser.add_argument("-o","--outpath", required=True, help='Location of where to 
 parser.add_argument("-t","--typeTier", required=True, help='Tier of type to find. Maintype=1, subtype=2, etc.')
 parser.add_argument("-g","--houseGeneEndRow", required=True, help='Last row containing housegenes. They should be from row 1 to this row')
 parser.add_argument("-l","--logFile", required=True, help='Location of log file')
+parser.add_argument("-c","--ratioToConfirm", required=True, help='Define minimum ratio to confirm hpvtype in sample (1 to 100)')
+parser.add_argument("-a","--MinReadsToCountAmpliconAsCovered", required=True, help='MinReadsToCountAmpliconAsCovered')
+parser.add_argument("-n","--MinNumberOfAmpliconsToConsiderType", required=True, help='MinNumberOfAmpliconsToConsiderType')
 
 # to allow passing lists, include the nargs='+'. The list must be given as ' ' seperated values, eg. --inlist a b c 
 # to set a defualt, use default='', to set another variable, use dest='myargs' e.g.
@@ -32,6 +35,10 @@ path = args.ref
 
 # Location of where to save output files
 refSavePath = args.outpath
+
+ratioToConfirm = int(args.ratioToConfirm)
+MinReadsToCountAmpliconAsCovered = int(args.MinReadsToCountAmpliconAsCovered) 
+MinNumberOfAmpliconsToConsiderType = int(args.MinNumberOfAmpliconsToConsiderType)
 
 faF = [f for f in listdir(path) if isfile(join(path, f))]
 faFiles = []
@@ -89,6 +96,7 @@ ddf[['Type', 'Gene']] = ddf['Gene'].str.split('_', 1, expand=True)
 # Find unique hpv types in matrix
 hpvTypes = pd.unique(ddf['Type'])
 
+
 # For sample, find HPV types in them
 covJson = {}
 for sample in sampleList:
@@ -98,14 +106,17 @@ for sample in sampleList:
     for hpv in hpvTypes:
         filtered = ddf[ddf['Type'] == hpv]
         
+
+
+
         # Checking how many amplicons have more than n reads
         ampliconsWithReads = 0
         for i in filtered[sample]:
             # define minimum reads to count amplicon as covered
-            if i > 1: 
+            if i > MinReadsToCountAmpliconAsCovered: 
                 ampliconsWithReads+=1
         # Define minimum number of amplicons to cover
-        if ampliconsWithReads < 2:
+        if ampliconsWithReads < MinNumberOfAmpliconsToConsiderType:
             covJson[sample].update({
                 hpv : 0
                 })
@@ -151,7 +162,7 @@ for sample in ratioJson.keys():
     for hpvtype, ratioCov in ratioJson[sample].items():
         
         # Define minimum ratio to confirm hpvtype in sample (1 to 100)
-        if ratioCov > 1: 
+        if ratioCov > ratioToConfirm: 
             confirm = "yes" 
             foundOneForSample = "yes"
             if ratioCov > highestRatio:

@@ -14,6 +14,10 @@ parser.add_argument("-r", "--ref", required=True, help="Location of all valid re
 parser.add_argument("-o","--outpath", required=True, help='Location of where to save output files')
 parser.add_argument("-g","--houseGeneEndRow", required=True, help='Last row containing housegenes. They should be from row 1 to this row')
 parser.add_argument("-a","--amplPos", required=True, help='bed file with amplicon positions. See manual for format')
+parser.add_argument("-d","--MinDepthOnSampleToCheck", required=True, help='If sum of HPV type cover is less than this, do not call an integration')
+parser.add_argument("-l","--LimitForIntCall", required=True, help='If avg of the regions in the HPV type in a sample is above this, set the cutoff to this. ')
+parser.add_argument("-m","--MinRatioForIntCall", required=True, help='Else if the avg is below LimitIntForCall, set the cutoff to avg of regions on the type times this')
+
 
 # to allow passing lists, include the nargs='+'. The list must be given as ' ' seperated values, eg. --inlist a b c 
 # to set a defualt, use default='', to set another variable, use dest='myargs' e.g.
@@ -32,6 +36,10 @@ path = args.ref
 # Location of where to save output files
 refSavePath = args.outpath
 
+# If sum of HPV type cover is less than n, do not call an integration
+MinDepthOnSampleToCheck = int(args.MinDepthOnSampleToCheck)
+LimitForIntCall = int(args.LimitForIntCall)
+MinRatioForIntCall = int(args.MinRatioForIntCall)
 
 faF = [f for f in listdir(path) if isfile(join(path, f))]
 faFiles = []
@@ -137,15 +145,18 @@ for sample in sampleList:
         leng = len(filtered[sample])
         sum = filtered[sample].sum()
         
-        # If sum of HPV type cover is less than n, do not call an integration
-        if sum < 50:
+        # If sum of HPV type cover is less than MinDepthOnSampleToCheck, do not call an integration
+        if sum < MinDepthOnSampleToCheck:
             continue
 
+        # If avg of the regions in the HPV type in a sample is above LimitForCall, set the cutoff to this. 
+        # Else if the avg is below that, set the cutoff to avg times MinRatioForIntCall
+
         avg = sum / leng
-        if avg > 50:
-            cutoff = 50
+        if avg > LimitForIntCall:
+            cutoff = LimitForIntCall
         else:
-            cutoff = avg*0.05
+            cutoff = avg*MinRatioForIntCall/100
 
         # for sample in sampleList:#
         filtered = filtered.reset_index()
