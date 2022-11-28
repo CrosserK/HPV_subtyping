@@ -33,7 +33,6 @@ BedPoolN=${#amplPools[@]}
 for (( i=1; i<=$BedPoolN; i++ ))
 do
 
-    echo bedpooln is $BedPoolN and i is $i
     if [ $BedPoolN == 2 ];
     then
         echo Splitting in "$BedPoolN" pools and removing primers
@@ -56,8 +55,8 @@ do
     BamInt="${BamFile%.bam}"_intersect${i}.bam
 
     # Splitting to pools. This is done in order to allow better clipping where reads going into a neighbour primer are kept. 
-    bedtools intersect -a $BamFile -b $tmpBedFile > "${BamFile%.bam}"_intersect${i}.bam
-    samtools index "${BamFile%.bam}"_intersect${i}.bam
+    bedtools intersect -a $BamFile -b $tmpBedFile > "${BamFile%.bam}"_intersect${i}.bam -F 0.95
+    samtools index $BamInt
 
     # Edit the bed file to make the positions span primers instead of amplicons
     while IFS= read -r line
@@ -66,19 +65,26 @@ do
         startpos=$(echo $line | awk '{print $2'})
         endpos=$(echo $line | awk '{print $3'})
         
-        startfront=$((startpos-50))
+        startfront=$((startpos-25))
         startend=$((startpos))
         endfront=$((endpos))
-        endend=$((endpos+50))
+        endend=$((endpos+25))
 
         echo -e $chr"\t"$startfront"\t"$startend >> "${tmpBedFile%.bed}"_primers.bed
         echo -e $chr"\t"$endfront"\t"$endend >> "${tmpBedFile%.bed}"_primers.bed
 
     done < "$tmpBedFile"
 
+    # Clean up the bam (make unmapped reads have flag 0)
+    java -jar ~/picard.jar CleanSam \
+    I=$BamInt \
+    O=${BamInt%.bam}_clean.bam
+
+    mv ${BamInt%.bam}_clean.bam $BamInt
+
     clipped_out=${BamInt%.bam}_clip.bam
     # Now clip with samtools ampliconclip
-    samtools ampliconclip -o $clipped_out -b "${tmpBedFile%.bed}"_primers.bed $BamInt --hard-clip --both-ends --tolerance 0
+    samtools ampliconclip -o $clipped_out -b "${tmpBedFile%.bed}"_primers.bed $BamInt --hard-clip --both-ends --tolerance 0 --filter-len 50
     # Sorting by name for samtools fixmate
     samtools sort -n $clipped_out > ${clipped_out%.bam}.sort.bam 
     # Fixing new TLEN tags
@@ -97,13 +103,14 @@ do
     # HaplotypeCaller nødvendigheder
     # Tilføjer tags, nødvendig for GATK, da der ikke arbejdes med uBAM filer 
     # RGLB = Read group library, RGPL = platform, RGPU = platform unit, RGSM = sample name
-    java -jar picard.jar AddOrReplaceReadGroups \
+    java -jar ~/picard.jar AddOrReplaceReadGroups \
     I=$clipped_out \
     O="${clipped_out%.bam}".readGroupFix.bam \
     RGLB=lib1 \
     RGPL=IonTorrent \
     RGPU=unit1 \
-    RGSM=1
+    RGSM=1 \
+    VALIDATION_STRINGENCY=LENIENT
 
     BamOut="${clipped_out%.bam}".readGroupFix.bam
 
@@ -119,8 +126,8 @@ then
     samtools fastq "${BamFile%.bam}"_clipped_merge.sort.bam.gz > $FQAddr
     echo Completed fastq conversion
 else
-     samtools fastq "${BamOut}" > $FQAddr
-     echo Completed fastq conversion
+    samtools fastq "${BamOut}" > $FQAddr
+    echo Completed fastq conversion
 fi
 
 
