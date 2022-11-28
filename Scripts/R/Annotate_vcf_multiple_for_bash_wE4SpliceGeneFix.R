@@ -23,7 +23,7 @@ LogFile <- paste(MainF,"/QC/Logs/",TopRunName,".txt", sep = "")
 
  
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# TopRunName <- "Test_forsog1_0951_21112022"
+# TopRunName <- "Opsaet9_chip1_HPV16panel_1320_25112022"
 # MultiFQfile <- paste("/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_",TopRunName,".txt",sep="")
 # SaveDir <- paste("/home/pato/Skrivebord/HPV_subtyping/Results/",TopRunName,sep="")
 # typeTier <- "2"
@@ -59,7 +59,7 @@ noelement <- 0
 novcfcounter <- 0
 for(Fastqname in MultiFastqList){
   #Fastqname <- MultiFastqList[1]
-  #Fastqname <-  "/home/pato/Skrivebord/HPV_subtyping/FASTQ/Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1459_11112022_filtered/35_Baseline.IonXpress_008.fastq" 
+  #Fastqname <-  "/home/pato/Skrivebord/HPV_subtyping/FASTQ/Opsaet9_chip1_HPV16panel_1320_25112022/151.IonXpress_019.fastq" 
   Fastqname <- tools::file_path_sans_ext(basename(Fastqname)) # Getting fastqname without path and ext
   # Checking if there's split bamfiles because of multple HPV types in one fastq
   RevReferences <- try(read.table(paste(MainF,"/Results/",TopRunName,"/",Fastqname,"/TypeCalls/",Fastqname,"_T",typeTier,"_R1_SplitTo.txt", sep = "")))
@@ -173,10 +173,10 @@ for(Fastqname in MultiFastqList){
     # For hver variant, tjek for ukorrigeret splicegen kald
     for(annoRow in 1:nrow(anno_df)){
       
-      #annoRow <- 1
+      #annoRow <- 14
       # Check if row exists
       rowExistsCheck <- try(anno_df$GENEID[annoRow])
-
+      
       # Check if row exists. If NA, set the variant as not in gene.
       if(length(rowExistsCheck) == 0 || is.na(rowExistsCheck)){
         if(exists("AnnoRdy")){
@@ -544,6 +544,11 @@ for(Fastqname in MultiFastqList){
         
         # If there are variants inside gene regions of gff file
       } else {
+        
+        # Changing empty varaa and refaa to frameshift
+        AAchange['REFAA'][AAchange['REFAA'] == ""] <- "frmshft"
+        AAchange['VARAA'][AAchange['VARAA'] == ""] <- "frmshft"
+        
         AA <- cbind(p = "p.", AAchange)
         rdyAA <- as.data.frame(paste(AA$p, AA$REFAA, AA$PROTEINLOC, AA$VARAA,":", AA$GENEID, sep = ""), col.names = aa)
         
