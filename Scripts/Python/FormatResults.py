@@ -47,6 +47,18 @@ for item in cols.copy():
     if "Vcf" in item:
         cols.remove(item)
 
+# Changing genenames of ex gene-E4-172 to E4
+newcols = []
+for gene in cols:
+    if "gene-" in gene:
+        newgene = gene.split("-")[1]
+        if newgene not in newcols:
+            newcols.append(newgene)
+    else:
+        if gene not in newcols:
+            newcols.append(gene)
+cols = newcols
+
 # Creating formatted table
 sumJson = []
 for patient in inddf.columns:
@@ -63,8 +75,7 @@ for patient in inddf.columns:
     sublineage = ""
     type = ""
     # Getting sublineage class and type from the reference id
-    iteration = 0
-
+    
     subLineRow = 0
     for i in sublineages[4]:
         if i in ref:
@@ -84,15 +95,44 @@ for patient in inddf.columns:
         # This check fails if value is NA
         if row == row:
             splt = row.split(" ")
-            # Try to split, because if the cell contains a message such as "NoE4File", the column should be skipped. 
-            if len(splt) != 4:
+
+            # If the cell contains a message such as "NoE4File", the column should be skipped. 
+            if len(splt) == 2:
                 continue
-            nuc = splt[0]
-            aa = splt[1]
-            gene = splt[2]
-            ptjson.update({
-                gene : [nuc,aa]
-            })
+
+            if len(splt) == 4:
+
+                nuc = splt[0]
+                aa = splt[1]
+                gene = splt[2]
+
+                # Changing genenames of ex gene-E4-172 to E4
+                if "gene-" in gene:
+                    gene = gene.split("-")[1]
+                
+                if ptjson[gene] != "":
+                    ptjson[gene].extend([[nuc,aa]])
+                else:
+                    ptjson.update({
+                        gene : [[nuc,aa]]
+                    })
+            # Else if len is 5, there is a multi codon case. Because e.g c(36, 38) exists
+            elif len(splt) == 5:
+                nuc = splt[0]
+                aa = str(splt[1:2]).replace(" ","")
+                gene = splt[3]
+
+                # Changing genenames of ex gene-E4-172 to E4
+                if "gene-" in gene:
+                    gene = gene.split("-")[1]
+                
+                if ptjson[gene] != "":
+                    ptjson[gene].extend([[nuc,aa]])
+                else:
+                    ptjson.update({
+                        gene : [[nuc,aa]]
+                    })
+
     #jsonlist = [ptjson]
     sumJson.append(ptjson)
 
