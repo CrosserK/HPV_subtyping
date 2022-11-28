@@ -1,11 +1,11 @@
 # NAMING
-  RunName: Test_forsog1
+  RunName: Opsaet9_chip1_HPV16panel
   
 # QUALITY FILTERING
   qualityFilt: true
   QualTrim: 20
   MinLen: 50
-  MaxLen: 320
+  MaxLen: 160
 
 # COVERAGE MATRIX GENOTYPING
   CovMatrixGenoTyping: true
@@ -36,5 +36,5 @@
 # MODULES 
   AlignAndVariantCall: true
   AnnotateVariants: true
-  DebugMode: true
+  DebugMode: false
   startPreviousRun: false
