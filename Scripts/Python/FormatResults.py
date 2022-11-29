@@ -125,6 +125,8 @@ for patient in inddf.columns:
                 # Changing genenames of ex gene-E4-172 to E4
                 if "gene-" in gene:
                     gene = gene.split("-")[1]
+                if "_ALPHA" in gene:
+                    gene = gene.split("_")[0]
                 
                 if ptjson[gene] != "":
                     ptjson[gene].extend([[nuc,aa]])
