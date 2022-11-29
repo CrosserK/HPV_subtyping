@@ -540,7 +540,7 @@ if [ $AnnotateVariants = true ]; then
 		cat colname_${TopRunName}.txt anno_${TopRunName}.txt > $ResultsF/AnnotationSummary_${TopRunName}.txt
 		# rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
 		# rm colname_${TopRunName}.txt anno_${TopRunName}.txt
-		# rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
+		rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
 	else
 		rm $ResultsF/ForSummaryScript_*.txt
 		echo "No variants found in this run" > $ResultsF/AnnotationSummary_${TopRunName}.txt
