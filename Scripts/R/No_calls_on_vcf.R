@@ -6,7 +6,7 @@ suppressMessages(library(dplyr))
 
 ##TEST
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# TopRunName <- "Reanalyze_user_S5-0184-347-HPV_genotypering_Sara_Opsaet_10_A_1459_11112022"
+# TopRunName <- "Opsaet9_chip1_HPV16panel_0934_29112022"
 # MultiFQfile <- paste("/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_",TopRunName,".txt",sep="")
 # SaveDir <- paste("/home/pato/Skrivebord/HPV_subtyping/Results/",TopRunName,sep="")
 # typeTier <- "2"
@@ -109,6 +109,21 @@ for(i in 1:as.integer(length(Refs[[1]])+1)){
     Anno_freq$GENEID[is.na(Anno_freq$GENEID)] <- "No suitable GFF file found"
     #Anno_freq$GENEID <- Anno_freq[is.na(Anno_freq$GENEID)] 
     Anno_freq$GENEID <- str_replace(Anno_freq$GENEID,"1,","")
+    
+    # Fixing gene names from gene-E4-172 to E4 etc.
+    for(i in 1:nrow(Anno_freq)){
+      if(grepl("gene-", Anno_freq$GENEID[i], fixed = TRUE)){
+        Anno_freq$GENEID[i] <- strsplit(Anno_freq$GENEID[i],"-")[[1]][2]
+      } 
+    }
+    
+    # Fixing gene names from E5_ALPHA to E5 etc.
+    for(i in 1:nrow(Anno_freq)){
+      if(grepl("_ALPHA", Anno_freq$GENEID[i], fixed = TRUE)){
+        Anno_freq$GENEID[i] <- strsplit(Anno_freq$GENEID[i],"_")[[1]][1]
+      } 
+    }
+    
     # Laver annotation info filer:
     write.table(Anno_freq, file = paste(SaveDir,"/","AnnotationFrequency_",TopRunName, Refname, ".txt", sep = ""), row.names = F,col.names = T, quote = F, sep = "\t")
     #file.remove(paste(SaveDir,"/","ForSummaryScript_",MultiFQfile,"_Nuc_change_coords_", Refname, ".txt", sep = ""))

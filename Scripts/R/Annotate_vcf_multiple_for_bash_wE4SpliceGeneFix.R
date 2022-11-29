@@ -21,9 +21,9 @@ MultiFQfile <- as.character(commandArgs(TRUE)[4])
 typeTier <- as.character(commandArgs(TRUE)[5])
 LogFile <- paste(MainF,"/QC/Logs/",TopRunName,".txt", sep = "")
 
- 
+
 # MainF <- "/home/pato/Skrivebord/HPV_subtyping"
-# TopRunName <- "Opsaet9_chip1_HPV16panel_1320_25112022"
+# TopRunName <- "Opsaet9_chip1_HPV16panel_0934_29112022"
 # MultiFQfile <- paste("/home/pato/Skrivebord/HPV_subtyping/FASTQ/FASTQfiles_",TopRunName,".txt",sep="")
 # SaveDir <- paste("/home/pato/Skrivebord/HPV_subtyping/Results/",TopRunName,sep="")
 # typeTier <- "2"
@@ -137,6 +137,17 @@ for(Fastqname in MultiFastqList){
     vcf_anno_df_2 <- vcf_anno@elementMetadata # Collecting elementdata
     vcf_anno_df <- cbind(Nuc_start, vcf_anno_df_2)
     anno_df <- as.data.frame(vcf_anno_df)
+    
+    # Insert missing amino acid, when frameshift
+    for(i in 1:nrow(anno_df)) {
+      if(anno_df$REFAA[i] == ""){
+        codon <- DNAString(anno_df$REFCODON[i])
+        codonTra <- suppressWarnings(Biostrings::translate(codon))
+        anno_df$REFAA[i] <- as.character(codonTra) 
+      } 
+    }
+    
+
     # BEGYNDER E4 SPLICE GEN KORREKTION:
     # Henter faktiske koordinater fra spliceinfo gff fil
     splname <- paste(Refname,".gff3", sep ="")
@@ -546,8 +557,7 @@ for(Fastqname in MultiFastqList){
       } else {
         
         # Changing empty varaa and refaa to frameshift
-        AAchange['REFAA'][AAchange['REFAA'] == ""] <- "frmshft"
-        AAchange['VARAA'][AAchange['VARAA'] == ""] <- "frmshft"
+        AAchange['VARAA'][AAchange['VARAA'] == ""] <- "Frameshift"
         
         AA <- cbind(p = "p.", AAchange)
         rdyAA <- as.data.frame(paste(AA$p, AA$REFAA, AA$PROTEINLOC, AA$VARAA,":", AA$GENEID, sep = ""), col.names = aa)
