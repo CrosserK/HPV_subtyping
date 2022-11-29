@@ -106,9 +106,11 @@ for patient in inddf.columns:
                 aa = splt[1]
                 gene = splt[2]
 
-                # Changing genenames of ex gene-E4-172 to E4
+                # Changing genenames of ex gene-E4-172 to E4 and E5_ALPHA to E5
                 if "gene-" in gene:
                     gene = gene.split("-")[1]
+                if "_ALPHA" in gene:
+                    gene = gene.split("_")[0]
                 
                 if ptjson[gene] != "":
                     ptjson[gene].extend([[nuc,aa]])
@@ -122,7 +124,7 @@ for patient in inddf.columns:
                 aa = str(splt[1:2]).replace(" ","")
                 gene = splt[3]
 
-                # Changing genenames of ex gene-E4-172 to E4
+                # Changing genenames of ex gene-E4-172 to E4 and E5_ALPHA to E5
                 if "gene-" in gene:
                     gene = gene.split("-")[1]
                 if "_ALPHA" in gene:
