@@ -538,8 +538,8 @@ if [ $AnnotateVariants = true ]; then
 		cat $ResultsF/AnnotationFrequency_${TopRunName}*.txt | awk "NR==1 {print}" > colname_${TopRunName}.txt
 		awk FNR!=1 $ResultsF/AnnotationFrequency_${TopRunName}*.txt > anno_${TopRunName}.txt  # Undgår første linje, da den er kolonnenavne
 		cat colname_${TopRunName}.txt anno_${TopRunName}.txt > $ResultsF/AnnotationSummary_${TopRunName}.txt
-		# rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
-		# rm colname_${TopRunName}.txt anno_${TopRunName}.txt
+		rm $ResultsF/AnnotationFrequency_${TopRunName}*.txt
+		rm colname_${TopRunName}.txt anno_${TopRunName}.txt
 		rm $ResultsF/${TopRunName}_Nuc_change_coords_*.bed
 	else
 		rm $ResultsF/ForSummaryScript_*.txt
